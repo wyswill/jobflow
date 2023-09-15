@@ -1,0 +1,13 @@
+{
+  "rust-analyzer.linkedProjects": [
+    "./Cargo.toml"
+  ],
+  "cSpell.words": [
+    "actix",
+    "Batis",
+    "consts",
+    "datetime",
+    "rbatis",
+    "rbdc"
+  ]
+}

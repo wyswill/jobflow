@@ -1,0 +1,21 @@
+[package]
+edition = "2021"
+name = "job_flow"
+version = "0.1.0"
+
+[dependencies]
+actix-web = "4.4.0"
+actix-web-static-files = "4.0.1"
+fast_log = "1.6.2"
+log = "0.4.20"
+rbatis = {version = "4.4.1", features = ["default_mode"]}
+rbdc-mysql = "4.4"
+rbs = {version = "4.4"}
+serde = {version = "1", features = ["derive"]}
+serde_json = "1.0.107"
+static-files = "0.2.3"
+tokio = {version = "1", features = ["full"]}
+chrono = "0.4.26"
+
+[build-dependencies]
+static-files = "0.2.1"
