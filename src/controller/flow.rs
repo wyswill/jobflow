@@ -1,4 +1,4 @@
-use crate::{model::fow::Flow, request::FlowPageQuery, response::ResponseBody, DataStore};
+use crate::{entity::fow::Flow, request::FlowPageQuery, response::ResponseBody, DataStore};
 use actix_web::{post, web, Responder};
 use rbatis::sql::PageRequest;
 

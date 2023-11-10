@@ -3,7 +3,7 @@ extern crate serde;
 extern crate serde_yaml;
 
 mod controller;
-mod model;
+mod entity;
 mod request;
 mod response;
 mod util;

@@ -1,5 +1,5 @@
 use crate::{
-    model::project::Project,
+    entity::project::Project,
     request::{CreateProjectBody, PageQuery},
     response::ResponseBody,
     util::date_fmt,
