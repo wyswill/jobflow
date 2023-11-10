@@ -1,11 +1,11 @@
 use crate::{
     entity::project::Project,
-    request::{CreateProjectBody, PageQuery},
+    request::{CreateProjectBody, IdReq, PageQuery},
     response::ResponseBody,
     util::date_fmt,
     DataStore,
 };
-use actix_web::{post, web, Responder};
+use actix_web::{delete, post, web, Responder};
 use rbatis::{sql::PageRequest, RBatis};
 
 #[post("/get_project_list")]
@@ -62,4 +62,32 @@ pub async fn crate_project(
     let _ = Project::insert(&_data.db, &project).await;
     rsp.rsp_msg = "项目创建成功".into();
     rsp
+}
+
+#[delete("/delete_project")]
+pub async fn delete_project(_req: web::Json<IdReq>, _data: web::Data<DataStore>) -> impl Responder {
+    let mut res = ResponseBody {
+        rsp_code: 0,
+        rsp_msg: "".to_string(),
+        data: "".to_string(),
+    };
+
+    let db_project = Project::select_by_id(&_data.db, &_req.id.to_string())
+        .await
+        .expect("项目查询失败");
+    match db_project {
+        Some(_) => {}
+        _ => {
+            res.rsp_code = -1;
+            res.rsp_msg = "项目未找到".to_string();
+            return res;
+        }
+    }
+
+    let _ = Project::delete_by_column(&_data.db, "id", &_req.id)
+        .await
+        .expect("项目删除失败");
+    res.rsp_msg = "项目删除成功".to_string();
+
+    res
 }

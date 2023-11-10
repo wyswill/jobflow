@@ -1,4 +1,4 @@
-use rbatis::{crud, impl_select_page};
+use rbatis::{crud, impl_select, impl_select_page};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -12,3 +12,4 @@ pub struct Flow {
 crud!(Flow {}, "flow");
 
 impl_select_page!(Flow{select_page_by_name(name: &str) => "` where name = #{name} order by create_time desc`" } );
+impl_select!(Flow{select_by_name(name:&str) -> Option => "`where name = #{name} `"});

@@ -43,6 +43,7 @@ async fn start_server() {
             .app_data(app_data.clone())
             .service(controller::project::crate_project)
             .service(controller::project::get_project_list)
+            .service(controller::project::delete_project)
             .service(controller::flow::get_flow_list)
     })
     .workers(conf.server_worker_size)

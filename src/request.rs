@@ -24,3 +24,8 @@ pub struct CreateFlowReq {
     pub flow_name: String,
     pub shell_str: String,
 }
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct IdReq {
+    pub id: usize,
+}
