@@ -17,3 +17,10 @@ pub struct PageQuery {
     pub offset: usize,
     pub size: usize,
 }
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct CreateFlowReq {
+    pub project_name: String,
+    pub flow_name: String,
+    pub shell_str: String,
+}

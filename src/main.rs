@@ -41,8 +41,9 @@ async fn start_server() {
     let _ = HttpServer::new(move || {
         App::new()
             .app_data(app_data.clone())
-            .service(controller::crate_project)
-            .service(controller::get_project_list)
+            .service(controller::project::crate_project)
+            .service(controller::project::get_project_list)
+            .service(controller::flow::get_flow_list)
     })
     .workers(conf.server_worker_size)
     .bind(MainFlow::gen_server_url())
