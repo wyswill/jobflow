@@ -1,4 +1,4 @@
-use rbatis::{crud, impl_select};
+use rbatis::{crud, impl_select, impl_select_page};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -10,8 +10,9 @@ pub struct Project {
     pub update_time: String,
 }
 
-impl_select!(Project{select_by_id(id:&str) -> Option => "`where id = #{id} limit 1`"});
-impl_select!(Project{select_by_name(name:&str) -> Option => "`where name = #{name} limit 1`"});
+impl_select!(Project{select_by_id(id:&str) -> Option => "`where id = #{id}`"});
+impl_select!(Project{select_by_name(name:&str) -> Option => "`where name = #{name} `"});
+impl_select_page!(Project{select_page() => "`order by create_time desc`" } );
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Flow {
@@ -21,6 +22,9 @@ pub struct Flow {
     pub update_time: String,
     pub shell_str: String,
 }
+impl_select_page!(Flow{select_page_by_name(name: &str) => "` where name = #{name} order by create_time desc`" } );
+
+
 
 crud!(Project {}, "project");
 crud!(Flow {}, "flow");

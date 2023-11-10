@@ -1,29 +1,30 @@
 use crate::{
-    model::Project,
-    request::CreateProjectBody,
-    response::{ListRsp, ResponseBody},
+    model::{Flow, Project},
+    request::{CreateProjectBody, FlowPageQuery, PageQuery},
+    response::ResponseBody,
     util::date_fmt,
     DataStore,
 };
-use actix_web::{get, post, web, Responder};
-use rbatis::RBatis;
+use actix_web::{post, web, Responder};
+use rbatis::{sql::PageRequest, RBatis};
 
-#[get("/get_project_list")]
-pub async fn get_project_list(data: web::Data<DataStore>) -> impl Responder {
+#[post("/get_project_list")]
+pub async fn get_project_list(
+    data: web::Data<DataStore>,
+    _req: web::Json<PageQuery>,
+) -> impl Responder {
     let db: &RBatis = &data.db;
-    let mut rsp_body = ResponseBody {
+    let project_list = Project::select_page(
+        db,
+        &PageRequest::new(_req.0.offset as u64, _req.0.size as u64),
+    )
+    .await
+    .unwrap();
+    let rsp_body = ResponseBody {
         rsp_code: 0,
         rsp_msg: "".into(),
-        data: ListRsp {
-            list: Vec::new(),
-            total: 10,
-        },
+        data: project_list,
     };
-    if let Ok(project_list) = Project::select_all(db).await {
-        rsp_body.data.total = project_list.len();
-        rsp_body.data.list = project_list;
-    }
-
     rsp_body
 }
 
@@ -60,5 +61,25 @@ pub async fn crate_project(
 
     let _ = Project::insert(&_data.db, &project).await;
     rsp.rsp_msg = "项目创建成功".into();
+    rsp
+}
+
+#[post("/get_flow_list")]
+pub async fn get_flow_list(
+    _req: web::Json<FlowPageQuery>,
+    _data: web::Data<DataStore>,
+) -> impl Responder {
+    let flows = Flow::select_page_by_name(
+        &_data.db,
+        &PageRequest::new(_req.0.offset as u64, _req.0.size as u64),
+        &_req.0.project_name,
+    )
+    .await
+    .unwrap();
+    let rsp = ResponseBody {
+        rsp_code: 0,
+        rsp_msg: "".to_string(),
+        data: flows,
+    };
     rsp
 }

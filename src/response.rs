@@ -1,6 +1,5 @@
-use crate::model::Project;
 use actix_web::{body::BoxBody, http::header::ContentType, HttpResponse, Responder};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 #[derive(Serialize)]
 pub struct ResponseBody<T> {
@@ -18,10 +17,4 @@ impl<T: Serialize> Responder for ResponseBody<T> {
             .content_type(ContentType::json())
             .body(body)
     }
-}
-
-#[derive(Serialize)]
-pub struct ListRsp {
-    pub list: Vec<Project>,
-    pub total: usize,
 }

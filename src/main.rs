@@ -50,7 +50,7 @@ impl MainFlow {
         let rb = RBatis::new();
         rb.link(
             MysqlDriver {},
-            "",
+            "mysql://root:wyswill4290@110.42.237.142:3306/job_flow?connection_limit=10&pool_timeout=60",
         )
         .await
         .unwrap();
