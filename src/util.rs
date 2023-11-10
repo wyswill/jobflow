@@ -1,12 +1,11 @@
 extern crate serde_yaml;
 
-use std::env;
-use chrono::{DateTime, Utc, Local};
+use chrono::{DateTime, Local, Utc};
 use log::info;
 use rbatis::RBatis;
 use rbdc_mysql::driver::MysqlDriver;
-use serde::{Serialize, Deserialize};
-
+use serde::{Deserialize, Serialize};
+use std::env;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ProgramConfig {
@@ -18,9 +17,9 @@ pub struct DataStore {
 }
 
 pub fn date_fmt() -> String {
-  let dt =  Utc::now();
-  let local_dt: DateTime<Local> = dt.with_timezone(&Local);
-  local_dt.format("%Y-%m-%d %H:%M:%S").to_string()
+    let dt = Utc::now();
+    let local_dt: DateTime<Local> = dt.with_timezone(&Local);
+    return local_dt.format("%Y-%m-%d %H:%M:%S").to_string();
 }
 
 pub struct MainFlow {}
@@ -42,7 +41,7 @@ impl MainFlow {
         let yaml_str = include_str!("../config.yml");
         let conf: ProgramConfig = serde_yaml::from_str(yaml_str).unwrap();
         println!("config: {:#?}", conf);
-        conf
+        return conf;
     }
 
     pub async fn init_db(db_url: &str) -> RBatis {
