@@ -5,7 +5,6 @@ version = "0.1.0"
 
 [dependencies]
 actix-web = "4.4.0"
-actix-web-static-files = "4.0.1"
 chrono = "0.4.26"
 fast_log = "1.6.2"
 log = "0.4.20"
