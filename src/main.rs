@@ -14,11 +14,8 @@ use fast_log::{
     plugin::{file_split::RollingType, packer::LogPacker},
     Config,
 };
-use log::info;
 use rbatis::RBatis;
-use rbdc_mysql::driver::MysqlDriver;
-use serde::{Deserialize, Serialize};
-use std::env;
+use util::{DataStore, MainFlow};
 
 //将 async main 函数标记为 actix 系统的入口点。
 #[actix_web::main]
@@ -34,43 +31,6 @@ async fn main() {
     log::logger().flush();
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ProgramConfig {
-    pub db_url: String,
-}
-struct MainFlow {}
-impl MainFlow {
-    pub fn gen_server_url() -> String {
-        let args: Vec<String> = env::args().collect();
-        println!("cmd arg {:?}", args);
-        let host = "0.0.0.0";
-        let mut port = "8080";
-        if let Some(val) = args.get(1) {
-            port = val;
-        }
-        let url = format!("{}:{}", host, port);
-        info!("server is on, addr http://{}", url);
-        return url;
-    }
-
-    fn prase_config() -> ProgramConfig {
-        let yaml_str = include_str!("../config.yml");
-        let conf: ProgramConfig = serde_yaml::from_str(yaml_str).unwrap();
-        println!("config: {:#?}", conf);
-        conf
-    }
-
-    pub async fn init_db(db_url: &str) -> RBatis {
-        let rb = RBatis::new();
-        rb.link(MysqlDriver {}, db_url).await.unwrap();
-        return rb;
-    }
-}
-
-pub struct DataStore {
-    pub db: RBatis,
-}
-
 async fn start_server() {
     let conf = MainFlow::prase_config();
     //创建 http 服务器
@@ -84,7 +44,7 @@ async fn start_server() {
             .service(controller::crate_project)
             .service(controller::get_project_list)
     })
-    .workers(1)
+    .workers(conf.server_worker_size)
     .bind(MainFlow::gen_server_url())
     .expect("服务启动失败")
     .run()
