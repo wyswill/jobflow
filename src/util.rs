@@ -16,7 +16,11 @@ pub struct DataStore {
     pub db: RBatis,
 }
 
-pub fn date_fmt() -> String {
+/**
+ * 获取当前时间的时间戳
+ * 格式: YYYY-MM-DD HH:mm:ss
+ */
+pub fn get_current_time_fmt() -> String {
     let dt = Utc::now();
     let local_dt: DateTime<Local> = dt.with_timezone(&Local);
     return local_dt.format("%Y-%m-%d %H:%M:%S").to_string();
@@ -24,6 +28,9 @@ pub fn date_fmt() -> String {
 
 pub struct MainFlow {}
 impl MainFlow {
+    /**
+     * 生成服务启动日志
+     */
     pub fn gen_server_url() -> String {
         let args: Vec<String> = env::args().collect();
         println!("cmd arg {:?}", args);
@@ -37,6 +44,9 @@ impl MainFlow {
         return url;
     }
 
+    /**
+     * 解析服务配置
+     */
     pub fn prase_config() -> ProgramConfig {
         let yaml_str = include_str!("../config.yml");
         let conf: ProgramConfig = serde_yaml::from_str(yaml_str).unwrap();
@@ -44,6 +54,9 @@ impl MainFlow {
         return conf;
     }
 
+    /**
+     * 初始化db链接
+     */
     pub async fn init_db(db_url: &str) -> RBatis {
         let rb = RBatis::new();
         rb.link(MysqlDriver {}, db_url).await.unwrap();

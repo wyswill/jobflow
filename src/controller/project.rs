@@ -2,7 +2,7 @@ use crate::{
     entity::project::Project,
     request::{CreateProjectBody, IdReq, PageQuery},
     response::ResponseBody,
-    util::{date_fmt, DataStore},
+    util::{get_current_time_fmt, DataStore},
 };
 use actix_web::{delete, post, web, Responder};
 use rbatis::{sql::PageRequest, RBatis};
@@ -52,8 +52,8 @@ pub async fn crate_project(
         id: None,
         flow_id: None,
         name,
-        create_time: date_fmt(),
-        update_time: date_fmt(),
+        create_time: get_current_time_fmt(),
+        update_time: get_current_time_fmt(),
     };
 
     let _ = Project::insert(&_data.db, &project).await;

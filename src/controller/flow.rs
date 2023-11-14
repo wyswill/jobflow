@@ -2,7 +2,7 @@ use crate::{
     entity::fow::Flow,
     request::{CreateFlowReq, FlowPageQuery},
     response::ResponseBody,
-    util::{date_fmt, DataStore},
+    util::{get_current_time_fmt, DataStore},
 };
 use actix_web::{post, web, Responder};
 use rbatis::sql::PageRequest;
@@ -55,8 +55,8 @@ pub async fn create_flow(
     let flow_data = Flow {
         id: None,
         name,
-        create_time: date_fmt(),
-        update_time: date_fmt(),
+        create_time: get_current_time_fmt(),
+        update_time: get_current_time_fmt(),
         shell_str,
     };
 
