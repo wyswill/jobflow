@@ -2,8 +2,7 @@ use crate::{
     entity::project::Project,
     request::{CreateProjectBody, IdReq, PageQuery},
     response::ResponseBody,
-    util::date_fmt,
-    DataStore,
+    util::{date_fmt, DataStore},
 };
 use actix_web::{delete, post, web, Responder};
 use rbatis::{sql::PageRequest, RBatis};

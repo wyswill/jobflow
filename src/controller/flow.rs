@@ -2,8 +2,7 @@ use crate::{
     entity::fow::Flow,
     request::{CreateFlowReq, FlowPageQuery},
     response::ResponseBody,
-    util::date_fmt,
-    DataStore,
+    util::{date_fmt, DataStore},
 };
 use actix_web::{post, web, Responder};
 use rbatis::sql::PageRequest;
