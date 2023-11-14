@@ -14,12 +14,10 @@ pub async fn get_project_list(
     _req: web::Json<PageQuery>,
 ) -> impl Responder {
     let db: &RBatis = &data.db;
-    let project_list = Project::select_page(
-        db,
-        &PageRequest::new(_req.0.offset as u64, _req.0.size as u64),
-    )
-    .await
-    .unwrap();
+    let project_list =
+        Project::select_page(db, &PageRequest::new(_req.offset as u64, _req.size as u64))
+            .await
+            .unwrap();
     let rsp_body = ResponseBody {
         rsp_code: 0,
         rsp_msg: "".into(),
@@ -38,7 +36,7 @@ pub async fn crate_project(
         rsp_msg: "".into(),
         data: "".to_string(),
     };
-    let name = _req.0.name.clone();
+    let name = _req.name.clone();
 
     if let Ok(has_project) = Project::select_by_name(&_data.db, &name).await {
         match has_project {
