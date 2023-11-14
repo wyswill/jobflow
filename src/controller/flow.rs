@@ -1,6 +1,6 @@
 use crate::{
     entity::fow::Flow,
-    request::{CreateFlowReq, FlowPageQuery},
+    request::{CreateFlowReq, FlowPageQuery, WsData},
     response::{MyWs, ResponseBody},
     util::{get_current_time_fmt, DataStore},
 };
@@ -66,7 +66,12 @@ pub async fn create_flow(
     res
 }
 
-pub async fn execute_shell(req: HttpRequest, stream: web::Payload) -> Result<HttpResponse, Error> {
+pub async fn handle_ws(req: HttpRequest, stream: web::Payload) -> Result<HttpResponse, Error> {
     let resp = ws::start(MyWs {}, &req, stream);
     resp
+}
+
+pub fn execute_shell_handler(ws_data: WsData, _ctx: &ws::WebsocketContext<MyWs>) -> String {
+    println!("{:#?}", ws_data);
+    return "asdf asdf".to_string();
 }

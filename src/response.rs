@@ -3,6 +3,8 @@ use actix_web::{body::BoxBody, http::header::ContentType, HttpResponse, Responde
 use actix_web_actors::ws;
 use serde::Serialize;
 
+use crate::{controller::flow::execute_shell_handler, request::WsData};
+
 #[derive(Serialize)]
 pub struct ResponseBody<T> {
     pub rsp_code: i8,
@@ -41,7 +43,10 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for MyWs {
             Ok(ws::Message::Text(text)) => {
                 // TODO: 执行shell 并将结果返回
                 println!("ws text {}", text);
-                return ctx.text(format!("ws rsp {}", text));
+                let ws_data: WsData =
+                    serde_json::from_str(&text.to_string()).expect("ws data 解析失败");
+                let res = execute_shell_handler(ws_data, &ctx);
+                return ctx.text(res);
             }
             Ok(ws::Message::Binary(bin)) => ctx.binary(bin),
             _ => (),
