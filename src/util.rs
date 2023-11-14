@@ -26,8 +26,14 @@ pub fn get_current_time_fmt() -> String {
     return local_dt.format("%Y-%m-%d %H:%M:%S").to_string();
 }
 
-pub struct MainFlow {}
+pub struct MainFlow {
+    pub config: ProgramConfig,
+}
 impl MainFlow {
+    pub async fn init() -> MainFlow {
+        let config = MainFlow::prase_config();
+        MainFlow { config }
+    }
     /**
      * 生成服务启动日志
      */
@@ -47,7 +53,7 @@ impl MainFlow {
     /**
      * 解析服务配置
      */
-    pub fn prase_config() -> ProgramConfig {
+    fn prase_config() -> ProgramConfig {
         let yaml_str = include_str!("../config.yml");
         let conf: ProgramConfig = serde_yaml::from_str(yaml_str).unwrap();
         println!("config: {:#?}", conf);
@@ -57,7 +63,7 @@ impl MainFlow {
     /**
      * 初始化db链接
      */
-    pub async fn init_db(db_url: &str) -> RBatis {
+    pub async fn init_db(&self, db_url: &str) -> RBatis {
         let rb = RBatis::new();
         rb.link(MysqlDriver {}, db_url).await.unwrap();
         return rb;

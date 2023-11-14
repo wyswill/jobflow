@@ -14,7 +14,8 @@ use fast_log::{
     plugin::{file_split::RollingType, packer::LogPacker},
     Config,
 };
-use server::start_server;
+use server::start_http_server;
+use util::MainFlow;
 
 //将 async main 函数标记为 actix 系统的入口点。
 #[actix_web::main]
@@ -26,6 +27,8 @@ async fn main() {
         LogPacker {},
     ))
     .unwrap();
-    start_server().await;
+    let main_flow = MainFlow::init().await;
+
+    start_http_server(&main_flow).await;
     log::logger().flush();
 }

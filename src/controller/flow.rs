@@ -14,8 +14,8 @@ pub async fn get_flow_list(
 ) -> impl Responder {
     let flows = Flow::select_page_by_name(
         &_data.db,
-        &PageRequest::new(_req.0.offset as u64, _req.0.size as u64),
-        &_req.0.project_name,
+        &PageRequest::new(_req.offset as u64, _req.size as u64),
+        &_req.project_name,
     )
     .await
     .unwrap();
@@ -38,8 +38,8 @@ pub async fn create_flow(
         data: "".to_string(),
     };
 
-    let name: String = _req.0.flow_name;
-    let shell_str: String = _req.0.shell_str;
+    let name: String = _req.flow_name.clone();
+    let shell_str: String = _req.shell_str.clone();
 
     if let Ok(has_flow) = Flow::select_by_name(&_data.db, &name).await {
         match has_flow {
@@ -64,3 +64,8 @@ pub async fn create_flow(
     res.rsp_msg = "流程创建成功".into();
     res
 }
+
+// #[post("/execute_shell")]
+// pub fn execute_shell() {
+
+// }
