@@ -32,6 +32,7 @@ pub async fn start_http_server(config: &MainFlow) {
             .app_data(app_data.clone())
             .service(web::scope("/api/project").configure(project_config))
             .service(web::scope("/api/flow").configure(flow_config))
+            .route("/ws/", web::get().to(flow::execute_shell))
     })
     .workers(config.config.server_worker_size)
     .bind(MainFlow::gen_server_url())

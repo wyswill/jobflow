@@ -1,10 +1,11 @@
 use crate::{
     entity::fow::Flow,
     request::{CreateFlowReq, FlowPageQuery},
-    response::ResponseBody,
+    response::{MyWs, ResponseBody},
     util::{get_current_time_fmt, DataStore},
 };
-use actix_web::{post, web, Responder};
+use actix_web::{post, web, Error, HttpRequest, HttpResponse, Responder};
+use actix_web_actors::ws;
 use rbatis::sql::PageRequest;
 
 #[post("/get_flow_list")]
@@ -65,7 +66,7 @@ pub async fn create_flow(
     res
 }
 
-// #[post("/execute_shell")]
-// pub fn execute_shell() {
-
-// }
+pub async fn execute_shell(req: HttpRequest, stream: web::Payload) -> Result<HttpResponse, Error> {
+    let resp = ws::start(MyWs {}, &req, stream);
+    resp
+}

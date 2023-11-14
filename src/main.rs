@@ -30,5 +30,5 @@ async fn main() {
     let main_flow = MainFlow::init().await;
 
     start_http_server(&main_flow).await;
-    log::logger().flush();
+    // log::logger().flush();
 }
