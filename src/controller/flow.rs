@@ -66,8 +66,12 @@ pub async fn create_flow(
     res
 }
 
-pub async fn handle_ws(req: HttpRequest, stream: web::Payload) -> Result<HttpResponse, Error> {
-    let resp = ws::start(MyWs {}, &req, stream);
+pub async fn handle_ws(
+    req: HttpRequest,
+    stream: web::Payload,
+    app_data: web::Data<DataStore>,
+) -> Result<HttpResponse, Error> {
+    let resp = ws::start(MyWs::new(app_data), &req, stream);
     resp
 }
 
