@@ -1,10 +1,7 @@
 use actix::{Actor, StreamHandler};
-use actix_web::{body::BoxBody, http::header::ContentType, web::Data, HttpResponse, Responder};
+use actix_web::{body::BoxBody, http::header::ContentType, HttpResponse, Responder};
 use actix_web_actors::ws;
 use serde::Serialize;
-use tokio::runtime::Runtime;
-
-use crate::{controller::flow::execute_shell_handler, request::WsData, util::DataStore};
 
 #[derive(Serialize)]
 pub struct ResponseBody<T> {
@@ -24,14 +21,7 @@ impl<T: Serialize> Responder for ResponseBody<T> {
     }
 }
 
-pub struct MyWs {
-    app_data: Data<DataStore>,
-}
-impl MyWs {
-    pub fn new(app_data: Data<DataStore>) -> MyWs {
-        MyWs { app_data }
-    }
-}
+pub struct MyWs;
 impl Actor for MyWs {
     type Context = ws::WebsocketContext<Self>;
     fn started(&mut self, _ctx: &mut Self::Context) {
@@ -48,13 +38,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for MyWs {
     fn handle(&mut self, msg: Result<ws::Message, ws::ProtocolError>, ctx: &mut Self::Context) {
         match msg {
             Ok(ws::Message::Ping(msg)) => ctx.pong(&msg),
-            Ok(ws::Message::Text(text)) => {
-                println!("ws text {}", text);
-                let ws_data: WsData =
-                    serde_json::from_str(&text.to_string()).expect("ws data 解析失败");
-                let res = execute_shell_handler(ws_data, &self.app_data);
-                ctx.text(res)
-            }
+            Ok(ws::Message::Text(text)) => ctx.text(text),
             Ok(ws::Message::Binary(bin)) => ctx.binary(bin),
             _ => (),
         }

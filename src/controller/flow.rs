@@ -69,23 +69,28 @@ pub async fn create_flow(
 pub async fn handle_ws(
     req: HttpRequest,
     stream: web::Payload,
-    app_data: web::Data<DataStore>,
+    // app_data: web::Data<DataStore>,
 ) -> Result<HttpResponse, Error> {
-    let resp = ws::start(MyWs::new(app_data), &req, stream);
-    resp
+    // let resp = ws::start(MyWs {}, &req, stream);
+    let ws_rsp: HttpResponse = handle_ws(req, stream).await?;
+    // let ws_data: WsData = serde_json::from_str(&resp.to_string()).expect("ws data 解析失败");
+    // actix_web::web::block(async move {
+    //     execute_shell_handler(ws_data, &self.app_data).await
+    // })
+    // .await
+    // .unwrap()
+    Ok(ws_rsp)
 }
 
-pub fn execute_shell_handler(ws_data: WsData, _data: &web::Data<DataStore>) -> String {
-    println!("{:#?}", ws_data);
-    // let res = Project::select_by_name(&_data.db, &ws_data.project_name)
-    //     .await
-    //     .expect("查询项目失败");
-    // match res {
-    //     Some(project_data) => {
-    //         println!("{:#?}", project_data);
-    //         return format!("{:#?}", project_data);
-    //     }
-    //     _ => return "".to_string(),
-    // }
-    return "".to_string();
+pub async fn execute_shell_handler(ws_data: WsData, _data: &web::Data<DataStore>) -> String {
+    let res = Project::select_by_name(&_data.db, &ws_data.project_name)
+        .await
+        .expect("查询项目失败");
+    match res {
+        Some(project_data) => {
+            println!("{:#?}", project_data);
+            return format!("{:#?}", project_data);
+        }
+        _ => return "".to_string(),
+    }
 }
