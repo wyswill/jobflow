@@ -2,6 +2,7 @@ use actix::{Actor, StreamHandler};
 use actix_web::{body::BoxBody, http::header::ContentType, web::Data, HttpResponse, Responder};
 use actix_web_actors::ws;
 use serde::Serialize;
+use tokio::runtime::Runtime;
 
 use crate::{controller::flow::execute_shell_handler, request::WsData, util::DataStore};
 
@@ -51,8 +52,8 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for MyWs {
                 println!("ws text {}", text);
                 let ws_data: WsData =
                     serde_json::from_str(&text.to_string()).expect("ws data 解析失败");
-                let res = execute_shell_handler(ws_data, &ctx);
-                return ctx.text(res);
+                let res = execute_shell_handler(ws_data, &self.app_data);
+                ctx.text(res)
             }
             Ok(ws::Message::Binary(bin)) => ctx.binary(bin),
             _ => (),

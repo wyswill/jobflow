@@ -1,5 +1,5 @@
 use crate::{
-    entity::fow::Flow,
+    entity::{fow::Flow, project::Project},
     request::{CreateFlowReq, FlowPageQuery, WsData},
     response::{MyWs, ResponseBody},
     util::{get_current_time_fmt, DataStore},
@@ -75,7 +75,17 @@ pub async fn handle_ws(
     resp
 }
 
-pub fn execute_shell_handler(ws_data: WsData, _ctx: &ws::WebsocketContext<MyWs>) -> String {
+pub fn execute_shell_handler(ws_data: WsData, _data: &web::Data<DataStore>) -> String {
     println!("{:#?}", ws_data);
-    return "asdf asdf".to_string();
+    // let res = Project::select_by_name(&_data.db, &ws_data.project_name)
+    //     .await
+    //     .expect("查询项目失败");
+    // match res {
+    //     Some(project_data) => {
+    //         println!("{:#?}", project_data);
+    //         return format!("{:#?}", project_data);
+    //     }
+    //     _ => return "".to_string(),
+    // }
+    return "".to_string();
 }
