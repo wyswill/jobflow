@@ -4,7 +4,7 @@ use crate::{
     response::{MyWs, ResponseBody},
     util::{get_current_time_fmt, DataStore},
 };
-use actix_web::{post, web, Error, HttpRequest, HttpResponse, Responder};
+use actix_web::{post, web, Error, HttpRequest, HttpResponse, Responder, get};
 use actix_web_actors::ws;
 use rbatis::{sql::PageRequest, RBatis};
 
@@ -66,23 +66,24 @@ pub async fn create_flow(
     res
 }
 
-pub fn handle_ws(
+#[get("/ws")]
+pub async fn handle_ws(
     req: HttpRequest,
     stream: web::Payload,
     _app_data: web::Data<DataStore>,
 ) -> Result<HttpResponse, Error> {
     let my_actor = MyWs::new(_app_data.db.clone());
-    let resp = ws::start(my_actor, &req, stream);
-    resp
+    let res = ws::start(my_actor, &req, stream);
+    res
 }
 
 pub async fn execute_shell_handler(ws_data: WsData, db: RBatis) -> String {
-    let res = Project::select_by_name(&db, &ws_data.project_name)
+    let res: Option<Project> = Project::select_by_name(&db, &ws_data.project_name)
         .await
         .expect("查询项目失败");
+
     match res {
         Some(project_data) => {
-            println!("{:#?}", project_data);
             return format!("{:#?}", project_data);
         }
         _ => return "".to_string(),

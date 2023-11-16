@@ -7,17 +7,17 @@ version = "0.1.0"
 actix = "0.13.1"
 actix-web = "4.4.0"
 actix-web-actors = "4.2.0"
-chrono = "0.4.26"
-fast_log = "1.6.2"
+chrono = "0.4.31"
+fast_log = "1.6.10"
 log = "0.4.20"
-rbatis = {version = "4.4.1", features = ["default_mode"]}
-rbdc-mysql = "4.4"
-rbs = {version = "4.4"}
-serde = {version = "1", features = ["derive"]}
-serde_json = "1.0.107"
+rbatis = {version = "4.5.2", features = ["default_mode"]}
+rbdc-mysql = "4.5.0"
+rbs = {version = "4.5.0"}
+serde = {version = "1.0.192", features = ["derive"]}
+serde_json = "1.0.108"
 serde_yaml = "0.9.27"
 static-files = "0.2.3"
-tokio = {version = "1", features = ["full"]}
+tokio = {version = "1.34.0", features = ["full"]}
 
 [build-dependencies]
 static-files = "0.2.1"
