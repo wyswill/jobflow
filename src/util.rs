@@ -7,6 +7,8 @@ use rbdc_mysql::driver::MysqlDriver;
 use serde::{Deserialize, Serialize};
 use std::env;
 
+use crate::request::WsData;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ProgramConfig {
     pub db_url: String,
@@ -68,4 +70,8 @@ impl MainFlow {
         rb.link(MysqlDriver {}, db_url).await.unwrap();
         return rb;
     }
+}
+pub fn prase_req(req_data: String) -> WsData {
+    let ws_data: WsData = serde_json::from_str(&req_data).expect("ws data 解析失败");
+    ws_data
 }

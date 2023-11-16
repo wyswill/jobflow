@@ -6,7 +6,7 @@ use crate::{
 };
 use actix_web::{post, web, Error, HttpRequest, HttpResponse, Responder};
 use actix_web_actors::ws;
-use rbatis::sql::PageRequest;
+use rbatis::{sql::PageRequest, RBatis};
 
 #[post("/get_flow_list")]
 pub async fn get_flow_list(
@@ -66,24 +66,18 @@ pub async fn create_flow(
     res
 }
 
-pub async fn handle_ws(
+pub fn handle_ws(
     req: HttpRequest,
     stream: web::Payload,
-    // app_data: web::Data<DataStore>,
+    _app_data: web::Data<DataStore>,
 ) -> Result<HttpResponse, Error> {
-    // let resp = ws::start(MyWs {}, &req, stream);
-    let ws_rsp: HttpResponse = handle_ws(req, stream).await?;
-    // let ws_data: WsData = serde_json::from_str(&resp.to_string()).expect("ws data 解析失败");
-    // actix_web::web::block(async move {
-    //     execute_shell_handler(ws_data, &self.app_data).await
-    // })
-    // .await
-    // .unwrap()
-    Ok(ws_rsp)
+    let my_actor = MyWs::new(_app_data.db.clone());
+    let resp = ws::start(my_actor, &req, stream);
+    resp
 }
 
-pub async fn execute_shell_handler(ws_data: WsData, _data: &web::Data<DataStore>) -> String {
-    let res = Project::select_by_name(&_data.db, &ws_data.project_name)
+pub async fn execute_shell_handler(ws_data: WsData, db: RBatis) -> String {
+    let res = Project::select_by_name(&db, &ws_data.project_name)
         .await
         .expect("查询项目失败");
     match res {
