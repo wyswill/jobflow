@@ -1,5 +1,5 @@
 use crate::{controller::flow::execute_shell_handler, util::prase_req};
-use actix::{dev::ContextFutureSpawner, Actor, StreamHandler, WrapFuture};
+use actix::{Actor, ActorFutureExt, AsyncContext, StreamHandler, WrapFuture};
 use actix_web::{body::BoxBody, http::header::ContentType, HttpResponse, Responder};
 use actix_web_actors::ws;
 use rbatis::RBatis;
@@ -57,11 +57,8 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for MyWs {
             Ok(ws::Message::Text(text)) => {
                 let db = self.db.clone();
                 let ws_data = prase_req(text.to_string());
-                let fut = async move {
-                    let res = execute_shell_handler(ws_data, db).await;
-                    ctx.text(res);
-                };
-                let _ = fut.into_actor(self).spawn(ctx);
+                let fut = async move { execute_shell_handler(ws_data, db).await };
+                ctx.wait(fut.into_actor(self).map(|res, _act, ctx| ctx.text(res)))
             }
             Ok(ws::Message::Binary(bin)) => ctx.binary(bin),
             _ => (),
