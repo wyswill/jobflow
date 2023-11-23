@@ -1,4 +1,4 @@
-use crate::{controller::flow::{prase_cmd, execute_shell_handler}, util::prase_req};
+use crate::{controller::flow::prase_cmd, util::prase_req};
 use actix::{Actor, ActorFutureExt, AsyncContext, StreamHandler, WrapFuture};
 use actix_web::{body::BoxBody, http::header::ContentType, HttpResponse, Responder};
 use actix_web_actors::ws;
@@ -43,14 +43,6 @@ impl Actor for MyWs {
     }
     // TODO 添加心跳链接
 }
-
-impl StreamHandler<String> for MyWs {
-    fn handle(&mut self, item: String, ctx: &mut Self::Context) {
-        print!("from str hand {}", item);
-        ctx.text("from str hand");
-    }
-}
-
 impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for MyWs {
     fn handle(&mut self, msg: Result<ws::Message, ws::ProtocolError>, ctx: &mut Self::Context) {
         match msg {
@@ -59,9 +51,11 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for MyWs {
                 let db = self.db.clone();
                 let ws_data = prase_req(text.to_string());
                 let fut = async move { prase_cmd(ws_data, db).await };
-                ctx.wait(fut.into_actor(self).map(|shell, _act, ctx: &mut ws::WebsocketContext<MyWs>| {
-                    execute_shell_handler(shell, ctx);
-                }))
+                ctx.wait(fut.into_actor(self).map(
+                    |shell, _act, ctx: &mut ws::WebsocketContext<MyWs>| {
+                        ctx.text(shell);
+                    },
+                ))
             }
             Ok(ws::Message::Binary(bin)) => ctx.binary(bin),
             _ => (),

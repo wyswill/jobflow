@@ -31,6 +31,5 @@ pub struct IdReq {
 }
 #[derive(Debug, Deserialize, Clone)]
 pub struct WsData {
-    pub project_name: String,
-    pub flow_name: String,
+    pub flow_id: i16,
 }

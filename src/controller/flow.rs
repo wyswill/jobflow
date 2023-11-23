@@ -1,5 +1,5 @@
 use crate::{
-    entity::{fow::Flow, project::Project, project_flow::ProjectFlow},
+    entity::{fow::Flow, project_flow::ProjectFlow},
     request::{CreateFlowReq, FlowPageQuery, WsData},
     response::{MyWs, ResponseBody},
     util::{get_current_time_fmt, DataStore},
@@ -8,6 +8,7 @@ use actix_web::{get, post, web, Error, HttpRequest, HttpResponse, Responder};
 use actix_web_actors::ws;
 use rbatis::{rbdc::db::ExecResult, sql::PageRequest, RBatis};
 use rbs::Value;
+use tokio::process::Command;
 
 #[post("/get_flow_list")]
 pub async fn get_flow_list(
@@ -41,6 +42,7 @@ pub async fn create_flow(
     };
 
     let name: String = _req.flow_name.clone();
+    // TODO: 添加危险shell 过滤
     let shell_str: String = _req.shell_str.clone();
 
     // 检测流程是否存在
@@ -114,19 +116,19 @@ pub async fn handle_ws(
 }
 
 pub async fn prase_cmd(ws_data: WsData, db: RBatis) -> String {
-    let project_data: Project = Project::select_by_name(&db, &ws_data.project_name)
-        .await
-        .expect("查询项目失败")
-        .unwrap();
-
-    let flow_data = Flow::select_bu_id(&db, &project_data.id.unwrap())
+    let flow_data = Flow::select_bu_id(&db, &ws_data.flow_id)
         .await
         .expect("流程查询失败")
         .unwrap();
-    flow_data.shell_str
+    // TODO: 添加危险shell 过滤
+    exec_shell(flow_data.shell_str).await
 }
 
-pub fn execute_shell_handler(shell: String, ctx: &mut ws::WebsocketContext<MyWs>) {
-    // TODO:
-    ctx.text(shell);
+pub async fn exec_shell(shell: String) -> String {
+    let mut child = Command::new("sh");
+    child.arg("-c").arg(shell);
+    let output = child.output().await.expect("failed to execute command");
+    let exec_str = String::from_utf8_lossy(&output.stdout);
+    let cs: std::str::Chars<'_> = exec_str.chars().into_iter();
+    String::from_iter(cs)
 }
