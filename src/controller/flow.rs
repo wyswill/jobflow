@@ -120,11 +120,12 @@ pub async fn prase_cmd(ws_data: WsData, db: RBatis) -> String {
         .await
         .expect("流程查询失败")
         .unwrap();
-    // TODO: 添加危险shell 过滤
+    // TODO: 1. 添加危险shell 过滤 
     exec_shell(flow_data.shell_str).await
 }
 
 pub async fn exec_shell(shell: String) -> String {
+    // TODO: 将执行输出按行输出
     let mut child = Command::new("sh");
     child.arg("-c").arg(shell);
     let output = child.output().await.expect("failed to execute command");
