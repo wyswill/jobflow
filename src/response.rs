@@ -1,4 +1,7 @@
-use crate::{controller::flow::prase_cmd, util::prase_req};
+use crate::{
+    controller::flow::{exec_shell, prase_cmd},
+    util::prase_req,
+};
 use actix::{Actor, ActorFutureExt, AsyncContext, StreamHandler, WrapFuture};
 use actix_web::{body::BoxBody, http::header::ContentType, HttpResponse, Responder};
 use actix_web_actors::ws;
@@ -50,12 +53,11 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for MyWs {
             Ok(ws::Message::Text(text)) => {
                 let db = self.db.clone();
                 let ws_data = prase_req(text.to_string());
-                let fut = async move { prase_cmd(ws_data, db).await };
-                ctx.wait(fut.into_actor(self).map(
-                    |shell, _act, ctx: &mut ws::WebsocketContext<MyWs>| {
-                        ctx.text(shell);
-                    },
-                ))
+                let fut = async move {
+                    let shell = prase_cmd(ws_data, db).await;
+                    // return shell;
+                };
+                ctx.wait(fut.into_actor(self));
             }
             Ok(ws::Message::Binary(bin)) => ctx.binary(bin),
             _ => (),
