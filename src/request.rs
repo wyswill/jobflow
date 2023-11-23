@@ -20,7 +20,7 @@ pub struct PageQuery {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct CreateFlowReq {
-    pub project_name: String,
+    pub project_id: i16,
     pub flow_name: String,
     pub shell_str: String,
 }

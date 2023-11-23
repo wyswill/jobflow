@@ -1,4 +1,4 @@
-use crate::{controller::flow::execute_shell_handler, util::prase_req};
+use crate::{controller::flow::{prase_cmd, execute_shell_handler}, util::prase_req};
 use actix::{Actor, ActorFutureExt, AsyncContext, StreamHandler, WrapFuture};
 use actix_web::{body::BoxBody, http::header::ContentType, HttpResponse, Responder};
 use actix_web_actors::ws;
@@ -41,6 +41,7 @@ impl Actor for MyWs {
     fn stopped(&mut self, _ctx: &mut Self::Context) {
         println!("ws 链接已断开");
     }
+    // TODO 添加心跳链接
 }
 
 impl StreamHandler<String> for MyWs {
@@ -57,8 +58,10 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for MyWs {
             Ok(ws::Message::Text(text)) => {
                 let db = self.db.clone();
                 let ws_data = prase_req(text.to_string());
-                let fut = async move { execute_shell_handler(ws_data, db).await };
-                ctx.wait(fut.into_actor(self).map(|res, _act, ctx| ctx.text(res)))
+                let fut = async move { prase_cmd(ws_data, db).await };
+                ctx.wait(fut.into_actor(self).map(|shell, _act, ctx: &mut ws::WebsocketContext<MyWs>| {
+                    execute_shell_handler(shell, ctx);
+                }))
             }
             Ok(ws::Message::Binary(bin)) => ctx.binary(bin),
             _ => (),

@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Project {
     pub id: Option<i16>,
-    pub flow_id: Option<i16>,
     pub name: String,
     pub create_time: String,
     pub update_time: String,

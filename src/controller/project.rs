@@ -50,7 +50,6 @@ pub async fn crate_project(
 
     let project: Project = Project {
         id: None,
-        flow_id: None,
         name,
         create_time: get_current_time_fmt(),
         update_time: get_current_time_fmt(),
