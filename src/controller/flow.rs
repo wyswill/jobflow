@@ -137,6 +137,7 @@ pub async fn exec_shell(shell: String) {
     let mut line = String::new();
 
 
+    // TODO 要么将读取转为同步,要么解决 同步函数中调用异步函数的问题
     // 循环读取每一行
     // while reader
     //     .read_line(&mut line)
