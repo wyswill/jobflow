@@ -8,7 +8,7 @@ use actix_web::{get, post, web, Error, HttpRequest, HttpResponse, Responder};
 use actix_web_actors::ws;
 use rbatis::{rbdc::db::ExecResult, sql::PageRequest, RBatis};
 use rbs::Value;
-use tokio::{process::Command, io::BufReader};
+use tokio::{process::Command, io::{BufReader, AsyncBufReadExt}};
 
 #[post("/get_flow_list")]
 pub async fn get_flow_list(
@@ -135,20 +135,19 @@ pub async fn exec_shell(shell: String) {
     // 使用 BufReader 按行读取
     let mut reader = BufReader::new(stdout);
     let mut line = String::new();
-
+    
 
     // TODO 要么将读取转为同步,要么解决 同步函数中调用异步函数的问题
     // 循环读取每一行
-    // while reader
-    //     .read_line(&mut line)
-    //     .await
-    //     .expect("failed to read line")
-    //     > 0
-    // {
-    //     println!("{}", line.trim_end());
-    //     line.clear(); // 清空字符串，以便再次使用
-    // }
-
+    while reader
+        .read_line(&mut line)
+        .await
+        .expect("failed to read line")
+        > 0
+    {
+        println!("{}", line.trim_end());
+        line.clear(); // 清空字符串，以便再次使用
+    }
     // let output = child.output().await.expect("failed to execute command");
     // let exec_str = String::from_utf8_lossy(&output.stdout);
     // let cs: std::str::Chars<'_> = exec_str.chars().into_iter();
