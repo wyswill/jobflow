@@ -129,6 +129,6 @@ pub async fn exec_shell(shell: String) -> String {
     child.arg("-c").arg(shell);
     let output = child.output().await.expect("failed to execute command");
     let exec_str = String::from_utf8_lossy(&output.stdout);
-    let cs: std::str::Chars<'_> = exec_str.chars().into_iter();
+    let cs = exec_str.chars().into_iter();
     String::from_iter(cs)
 }
