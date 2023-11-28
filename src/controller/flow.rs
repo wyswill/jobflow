@@ -8,7 +8,6 @@ use actix_web::{get, post, web, Error, HttpRequest, HttpResponse, Responder};
 use actix_web_actors::ws;
 use rbatis::{rbdc::db::ExecResult, sql::PageRequest, RBatis};
 use rbs::Value;
-use tokio::process::Command;
 
 #[post("/get_flow_list")]
 pub async fn get_flow_list(
@@ -115,20 +114,12 @@ pub async fn handle_ws(
     res
 }
 
-pub async fn prase_cmd(ws_data: WsData, db: RBatis) -> String {
-    let flow_data = Flow::select_bu_id(&db, &ws_data.flow_id)
+pub async fn prase_cmd(ws_data: WsData, db: RBatis) -> Vec<String> {
+    let flow_data: Flow = Flow::select_bu_id(&db, &ws_data.flow_id)
         .await
         .expect("流程查询失败")
         .unwrap();
     // TODO: 添加危险shell 过滤
-    exec_shell(flow_data.shell_str).await
-}
-
-pub async fn exec_shell(shell: String) -> String {
-    let mut child = Command::new("sh");
-    child.arg("-c").arg(shell);
-    let output = child.output().await.expect("failed to execute command");
-    let exec_str = String::from_utf8_lossy(&output.stdout);
-    let cs = exec_str.chars().into_iter();
-    String::from_iter(cs)
+    let vec_shell = Vec::from_iter(flow_data.shell_str.split("\n").map(|sh| sh.to_string()));
+    vec_shell
 }

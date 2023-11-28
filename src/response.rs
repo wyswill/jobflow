@@ -1,9 +1,10 @@
-use crate::util::prase_req;
-use actix::{Actor, AsyncContext, StreamHandler};
+use crate::{controller::flow::prase_cmd, util::prase_req};
+use actix::{Actor, ActorFutureExt, AsyncContext, StreamHandler, WrapFuture};
 use actix_web::{body::BoxBody, http::header::ContentType, HttpResponse, Responder};
 use actix_web_actors::ws;
 use rbatis::RBatis;
 use serde::Serialize;
+use std::process::Command;
 
 #[derive(Serialize)]
 pub struct ResponseBody<T> {
@@ -45,24 +46,39 @@ impl Actor for MyWs {
 }
 impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for MyWs {
     fn handle(&mut self, msg: Result<ws::Message, ws::ProtocolError>, ctx: &mut Self::Context) {
-        let my_ws_addr = ctx.address();
         match msg {
             Ok(ws::Message::Ping(msg)) => ctx.pong(&msg),
             Ok(ws::Message::Text(text)) => {
                 let db = self.db.clone();
                 let ws_data = prase_req(text.to_string());
-//                let a = my_ws_addr.send(Shell);
-                // let fut = async move { prase_cmd(ws_data, db).await };
-                // ctx.wait(fut.into_actor(self).map(
-                //     |shell, _act:, ctx: &mut ws::WebsocketContext<MyWs>| {
-                //         
-                //         // ctx.text(shell);
-                
+                let fut = async move {
+                    let vec_shell = prase_cmd(ws_data, db).await;
+                    vec_shell
+                };
+                ctx.wait(fut.into_actor(self).map(|res, _self, ctx| {
+                    for sh in res {
+                        if sh.is_empty() {
+                            continue;
+                        }
+                        let output = Command::new("sh")
+                            .arg("-c")
+                            .arg(sh)
+                            .output()
+                            .expect("Failed to execute command");
+                        if output.status.success() {
+                            let stdout = String::from_utf8_lossy(&output.stdout);
+                            println!("Command executed successfully:\n{}", stdout);
+                            ctx.text(stdout.to_string());
+                        } else {
+                            let stderr = String::from_utf8_lossy(&output.stderr);
+                            println!("Command failed:\n{}", stderr);
+                            ctx.text(stderr.to_string());
+                        }
+                    }
+                }));
             }
             Ok(ws::Message::Binary(bin)) => ctx.binary(bin),
             _ => (),
         }
     }
 }
-
-
