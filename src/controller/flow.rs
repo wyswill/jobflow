@@ -123,3 +123,4 @@ pub async fn prase_cmd(ws_data: WsData, db: RBatis) -> Vec<String> {
     let vec_shell = Vec::from_iter(flow_data.shell_str.split("\n").map(|sh| sh.to_string()));
     vec_shell
 }
+
