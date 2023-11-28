@@ -8,7 +8,6 @@ use actix_web::{get, post, web, Error, HttpRequest, HttpResponse, Responder};
 use actix_web_actors::ws;
 use rbatis::{rbdc::db::ExecResult, sql::PageRequest, RBatis};
 use rbs::Value;
-use tokio::{process::Command, io::{BufReader, AsyncBufReadExt}};
 
 #[post("/get_flow_list")]
 pub async fn get_flow_list(
@@ -115,41 +114,12 @@ pub async fn handle_ws(
     res
 }
 
-pub async fn prase_cmd(ws_data: WsData, db: RBatis) -> String {
-    let flow_data = Flow::select_bu_id(&db, &ws_data.flow_id)
+pub async fn prase_cmd(ws_data: WsData, db: RBatis) -> Vec<String> {
+    let flow_data: Flow = Flow::select_bu_id(&db, &ws_data.flow_id)
         .await
         .expect("流程查询失败")
         .unwrap();
-    flow_data.shell_str
-    // TODO: 1. 添加危险shell 过滤
-    // exec_shell(flow_data.shell_str).await
-}
-
-pub async fn exec_shell(shell: String) {
-    let mut command = Command::new("sh");
-    command.arg("-c").arg(shell);
-    // 异步执行命令，并获取标准输出的句柄
-    let mut child = command.spawn().expect("failed to spawn command");
-    let stdout = child.stdout.take().expect("failed to take stdout");
-
-    // 使用 BufReader 按行读取
-    let mut reader = BufReader::new(stdout);
-    let mut line = String::new();
-    
-
-    // TODO 要么将读取转为同步,要么解决 同步函数中调用异步函数的问题
-    // 循环读取每一行
-    while reader
-        .read_line(&mut line)
-        .await
-        .expect("failed to read line")
-        > 0
-    {
-        println!("{}", line.trim_end());
-        line.clear(); // 清空字符串，以便再次使用
-    }
-    // let output = child.output().await.expect("failed to execute command");
-    // let exec_str = String::from_utf8_lossy(&output.stdout);
-    // let cs: std::str::Chars<'_> = exec_str.chars().into_iter();
-    // String::from_iter(cs)
+    // TODO: 添加危险shell 过滤
+    let vec_shell = Vec::from_iter(flow_data.shell_str.split("\n").map(|sh| sh.to_string()));
+    vec_shell
 }
