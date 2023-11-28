@@ -1,4 +1,7 @@
-use crate::{controller::flow::prase_cmd, util::prase_req};
+use crate::{
+    controller::flow::{exec_shell, prase_cmd},
+    util::prase_req,
+};
 use actix::{Actor, ActorFutureExt, AsyncContext, StreamHandler, WrapFuture};
 use actix_web::{body::BoxBody, http::header::ContentType, HttpResponse, Responder};
 use actix_web_actors::ws;
