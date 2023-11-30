@@ -2,7 +2,8 @@ use crate::{
     controller::{flow, project},
     util::{DataStore, MainFlow},
 };
-use actix_web::{web, App, HttpServer};
+use actix_cors::Cors;
+use actix_web::{http, web, App, HttpServer};
 /**
  * 项目接口router
  */
@@ -29,6 +30,17 @@ pub async fn start_http_server(config: &MainFlow) {
 
     let _ = HttpServer::new(move || {
         App::new()
+            .wrap(
+                Cors::default()
+                    .allow_any_origin()
+                    .allowed_methods(vec!["GET", "POST"])
+                    .allowed_headers(vec![
+                        http::header::AUTHORIZATION,
+                        http::header::ACCEPT,
+                        http::header::CONTENT_TYPE,
+                    ])
+                    .max_age(3600),
+            )
             .app_data(app_data.clone())
             .service(web::scope("/api/project").configure(project_config))
             .service(web::scope("/api/flow").configure(flow_config))
