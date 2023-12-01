@@ -31,3 +31,10 @@ pub struct IdReq {
 pub struct WsData {
     pub flow_id: i16,
 }
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct UpdateFLowReq {
+    pub id: usize,
+    pub flow_name: String,
+    pub shell_str: String,
+}

@@ -1,6 +1,6 @@
 use crate::{
     entity::{fow::Flow, project_flow::ProjectFlow},
-    request::{CreateFlowReq, FlowPageQuery, IdReq, WsData},
+    request::{CreateFlowReq, FlowPageQuery, IdReq, UpdateFLowReq, WsData},
     response::{MyWs, ResponseBody},
     util::{get_current_time_fmt, DataStore},
 };
@@ -139,6 +139,21 @@ pub async fn create_flow(
     res
 }
 
+async fn check_flow_in_db(db: &RBatis, id: &str) -> Option<ResponseBody<String>> {
+    let db_flow = Flow::select_by_id(db, id)
+        .await
+        .expect("flow不存在,删除失败");
+
+    match db_flow {
+        Some(_) => None,
+        _ => Some(ResponseBody {
+            rsp_code: -1,
+            rsp_msg: "查询flow失败".to_string(),
+            data: "".to_string(),
+        }),
+    }
+}
+
 #[delete("/delete_flow")]
 pub async fn delete_flow(_req: web::Json<IdReq>, _data: web::Data<DataStore>) -> impl Responder {
     let mut res = ResponseBody {
@@ -146,23 +161,39 @@ pub async fn delete_flow(_req: web::Json<IdReq>, _data: web::Data<DataStore>) ->
         rsp_msg: "".to_string(),
         data: "".to_string(),
     };
-    let db_flow = Flow::select_by_id(&_data.db, &_req.id.to_string())
-        .await
-        .expect("flow不存在,删除失败");
 
-    match db_flow {
-        Some(_) => {}
-        _ => {
-            res.rsp_code = -1;
-            res.rsp_msg = "查询flow失败".to_string();
-            return res;
+    match check_flow_in_db(&_data.db, &_req.id.to_string()).await {
+        Some(check_res) => {
+            return check_res;
         }
+        _ => {}
     }
 
     let _ = Flow::delete_by_column(&_data.db, "id", &_req.id)
         .await
         .expect("flow删除失败");
     res.rsp_msg = "flow删除成功".to_string();
+
+    res
+}
+
+#[post("/update_flow")]
+pub async fn update_flow(
+    _req: web::Json<UpdateFLowReq>,
+    _data: web::Data<DataStore>,
+) -> impl Responder {
+    let res = ResponseBody {
+        rsp_code: 0,
+        rsp_msg: "".to_string(),
+        data: "".to_string(),
+    };
+
+    match check_flow_in_db(&_data.db, &_req.id.to_string()).await {
+        Some(check_res) => {
+            return check_res;
+        }
+        _ => {}
+    }
 
     res
 }
