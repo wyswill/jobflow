@@ -1,10 +1,10 @@
 use crate::{
     entity::{fow::Flow, project_flow::ProjectFlow},
-    request::{CreateFlowReq, FlowPageQuery, WsData},
+    request::{CreateFlowReq, FlowPageQuery, IdReq, WsData},
     response::{MyWs, ResponseBody},
     util::{get_current_time_fmt, DataStore},
 };
-use actix_web::{get, post, web, Error, HttpRequest, HttpResponse, Responder};
+use actix_web::{delete, get, post, web, Error, HttpRequest, HttpResponse, Responder};
 use actix_web_actors::ws;
 use rbatis::{rbdc::db::ExecResult, sql::Page, RBatis};
 use rbs::{to_value, Value};
@@ -107,8 +107,7 @@ pub async fn create_flow(
     // 检测关系是否存在
 
     if let Value::U64(id) = insert_flow_res.last_insert_id {
-        println!("flow id : {}", id);
-        let project_flow_res = ProjectFlow::select_by_flow_id(&_data.db, id)
+        let project_flow_res = ProjectFlow::select_by_flow_id(&_data.db, &id.to_string())
             .await
             .expect("获取项目和流程关系失败");
         match project_flow_res {
@@ -140,6 +139,34 @@ pub async fn create_flow(
     res
 }
 
+#[delete("/delete_flow")]
+pub async fn delete_flow(_req: web::Json<IdReq>, _data: web::Data<DataStore>) -> impl Responder {
+    let mut res = ResponseBody {
+        rsp_code: 0,
+        rsp_msg: "".to_string(),
+        data: "".to_string(),
+    };
+    let db_flow = Flow::select_by_id(&_data.db, &_req.id.to_string())
+        .await
+        .expect("flow不存在,删除失败");
+
+    match db_flow {
+        Some(_) => {}
+        _ => {
+            res.rsp_code = -1;
+            res.rsp_msg = "查询flow失败".to_string();
+            return res;
+        }
+    }
+
+    let _ = Flow::delete_by_column(&_data.db, "id", &_req.id)
+        .await
+        .expect("flow删除失败");
+    res.rsp_msg = "flow删除成功".to_string();
+
+    res
+}
+
 #[get("/ws")]
 pub async fn handle_ws(
     req: HttpRequest,
@@ -152,7 +179,7 @@ pub async fn handle_ws(
 }
 
 pub async fn prase_cmd(ws_data: WsData, db: RBatis) -> Vec<String> {
-    let flow_data: Flow = Flow::select_bu_id(&db, &ws_data.flow_id)
+    let flow_data: Flow = Flow::select_by_id(&db, &ws_data.flow_id.to_string())
         .await
         .expect("流程查询失败")
         .unwrap();

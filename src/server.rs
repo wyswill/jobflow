@@ -18,6 +18,7 @@ fn project_config(cfg: &mut web::ServiceConfig) {
 fn flow_config(cfg: &mut web::ServiceConfig) {
     cfg.service(flow::create_flow);
     cfg.service(flow::get_flow_list);
+    cfg.service(flow::delete_flow);
 }
 
 /**
