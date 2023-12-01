@@ -1,4 +1,4 @@
-use rbatis::{crud, impl_select};
+use rbatis::{crud, impl_select, impl_select_page};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -9,5 +9,5 @@ pub struct ProjectFlow {
 }
 crud!(ProjectFlow {}, "project_flow");
 impl_select!(ProjectFlow{select_by_id(id:&str) -> Option => "`where id = #{id}`"});
-impl_select!(ProjectFlow{select_by_project_id(id:&str) -> Option => "`where project_id = #{id}`"});
+impl_select_page!(ProjectFlow{select_by_project_id(id:usize) => "`where project_id = #{id}`"});
 impl_select!(ProjectFlow{select_by_flow_id(id: u64) -> Option => "`where flow_id = #{id}`"});

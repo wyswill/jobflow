@@ -33,7 +33,7 @@ pub async fn start_http_server(config: &MainFlow) {
             .wrap(
                 Cors::default()
                     .allow_any_origin()
-                    .allowed_methods(vec!["GET", "POST"])
+                    .allowed_methods(vec!["GET", "POST", "DELETE"])
                     .allowed_headers(vec![
                         http::header::AUTHORIZATION,
                         http::header::ACCEPT,

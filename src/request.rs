@@ -7,9 +7,7 @@ pub struct CreateProjectBody {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct FlowPageQuery {
-    pub offset: usize,
-    pub size: usize,
-    pub project_name: String,
+    pub project_id: usize,
 }
 
 #[derive(Debug, Deserialize, Clone)]

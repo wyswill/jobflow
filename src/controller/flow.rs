@@ -6,27 +6,64 @@ use crate::{
 };
 use actix_web::{get, post, web, Error, HttpRequest, HttpResponse, Responder};
 use actix_web_actors::ws;
-use rbatis::{rbdc::db::ExecResult, sql::PageRequest, RBatis};
-use rbs::Value;
+use rbatis::{rbdc::db::ExecResult, sql::Page, RBatis};
+use rbs::{to_value, Value};
 
 #[post("/get_flow_list")]
 pub async fn get_flow_list(
     _req: web::Json<FlowPageQuery>,
     _data: web::Data<DataStore>,
 ) -> impl Responder {
-    let flows = Flow::select_page_by_name(
-        &_data.db,
-        &PageRequest::new(_req.offset as u64, _req.size as u64),
-        &_req.project_name,
-    )
-    .await
-    .unwrap();
-    let rsp = ResponseBody {
+    let relations: Vec<ProjectFlow> = _data
+        .db
+        .query_decode(
+            "select * from project_flow where project_id = ?",
+            vec![to_value!(_req.project_id)],
+        )
+        .await
+        .expect("获取项目和流程关系失败");
+
+    let default_data: Page<Flow> = Page {
+        records: vec![],
+        total: 0,
+        page_no: 0,
+        page_size: 10,
+        do_count: true,
+    };
+    let mut res = ResponseBody {
         rsp_code: 0,
         rsp_msg: "".to_string(),
-        data: flows,
+        data: default_data,
     };
-    rsp
+    if relations.len().eq(&0) {
+        return res;
+    }
+
+    let relation_iter = relations.into_iter();
+    let mut ids: Vec<String> = Vec::new();
+
+    relation_iter.for_each(|ele| {
+        ids.push(ele.flow_id.to_string());
+    });
+
+    let sql = format!("select * from flow where id in ({})", ids.join(","));
+
+    let flows: Vec<Flow> = _data
+        .db
+        .query_decode(&sql, vec![])
+        .await
+        .expect("查询flow失败");
+
+    let total = flows.len() as u64;
+    let page_res: Page<Flow> = Page {
+        records: flows,
+        total,
+        page_no: 0,
+        page_size: 10,
+        do_count: true,
+    };
+    res.data = page_res;
+    res
 }
 
 #[post("/create_flow")]
@@ -123,4 +160,3 @@ pub async fn prase_cmd(ws_data: WsData, db: RBatis) -> Vec<String> {
     let vec_shell = Vec::from_iter(flow_data.shell_str.split("\n").map(|sh| sh.to_string()));
     vec_shell
 }
-
