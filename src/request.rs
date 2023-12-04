@@ -27,10 +27,6 @@ pub struct CreateFlowReq {
 pub struct IdReq {
     pub id: usize,
 }
-#[derive(Debug, Deserialize, Clone)]
-pub struct WsData {
-    pub flow_id: i16,
-}
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct UpdateFLowReq {

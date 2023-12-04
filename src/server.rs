@@ -19,6 +19,7 @@ fn flow_config(cfg: &mut web::ServiceConfig) {
     cfg.service(flow::create_flow);
     cfg.service(flow::get_flow_list);
     cfg.service(flow::delete_flow);
+    cfg.service(flow::execute);
 }
 
 /**
@@ -45,7 +46,6 @@ pub async fn start_http_server(config: &MainFlow) {
             .app_data(app_data.clone())
             .service(web::scope("/api/project").configure(project_config))
             .service(web::scope("/api/flow").configure(flow_config))
-            .service(flow::handle_ws)
     })
     .workers(config.config.server_worker_size)
     .bind(MainFlow::gen_server_url())

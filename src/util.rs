@@ -1,13 +1,15 @@
 extern crate serde_yaml;
-
 use chrono::{DateTime, Local, Utc};
 use log::info;
 use rbatis::RBatis;
 use rbdc_mysql::driver::MysqlDriver;
 use serde::{Deserialize, Serialize};
 use std::env;
-
-use crate::request::WsData;
+use std::pin::Pin;
+use std::task::{Context, Poll};
+use tokio::sync::mpsc;
+use tokio_stream::Stream;
+use tokio_util::bytes::Bytes;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ProgramConfig {
@@ -71,7 +73,20 @@ impl MainFlow {
         return rb;
     }
 }
-pub fn prase_req(req_data: String) -> WsData {
-    let ws_data: WsData = serde_json::from_str(&req_data).expect("ws data 解析失败");
-    ws_data
+
+pub struct LineStream {
+    pub receiver: mpsc::Receiver<std::io::Result<String>>,
+}
+
+impl Stream for LineStream {
+    type Item = std::io::Result<Bytes>;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        match Pin::new(&mut self.receiver).poll_recv(cx) {
+            Poll::Ready(Some(Ok(line))) => Poll::Ready(Some(Ok(Bytes::from(line)))),
+            Poll::Ready(Some(Err(e))) => Poll::Ready(Some(Err(e))),
+            Poll::Ready(None) => Poll::Ready(None),
+            Poll::Pending => Poll::Pending,
+        }
+    }
 }

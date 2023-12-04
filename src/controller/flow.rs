@@ -1,13 +1,15 @@
 use crate::{
     entity::{fow::Flow, project_flow::ProjectFlow},
-    request::{CreateFlowReq, FlowPageQuery, IdReq, UpdateFLowReq, WsData},
-    response::{MyWs, ResponseBody},
-    util::{get_current_time_fmt, DataStore},
+    request::{CreateFlowReq, FlowPageQuery, IdReq, UpdateFLowReq},
+    response::ResponseBody,
+    util::{get_current_time_fmt, DataStore, LineStream},
 };
-use actix_web::{delete, get, post, web, Error, HttpRequest, HttpResponse, Responder};
-use actix_web_actors::ws;
+use actix_web::{delete, get, post, web, HttpResponse, Responder};
 use rbatis::{rbdc::db::ExecResult, sql::Page, RBatis};
 use rbs::{to_value, Value};
+use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::process::Command;
+use tokio::sync::mpsc;
 
 #[post("/get_flow_list")]
 pub async fn get_flow_list(
@@ -198,23 +200,42 @@ pub async fn update_flow(
     res
 }
 
-#[get("/ws")]
-pub async fn handle_ws(
-    req: HttpRequest,
-    stream: web::Payload,
-    _app_data: web::Data<DataStore>,
-) -> Result<HttpResponse, Error> {
-    let my_actor = MyWs::new(_app_data.db.clone());
-    let res = ws::start(my_actor, &req, stream);
-    res
-}
-
-pub async fn prase_cmd(ws_data: WsData, db: RBatis) -> Vec<String> {
-    let flow_data: Flow = Flow::select_by_id(&db, &ws_data.flow_id.to_string())
+#[get("/execute")]
+async fn execute(_req: web::Query<IdReq>, _data: web::Data<DataStore>) -> impl Responder {
+    println!("{:#?}", _req);
+    let flow_data: Flow = Flow::select_by_id(&_data.db, &_req.id.to_string())
         .await
         .expect("流程查询失败")
         .unwrap();
-    // TODO: 添加危险shell 过滤
-    let vec_shell = Vec::from_iter(flow_data.shell_str.split("\n").map(|sh| sh.to_string()));
-    vec_shell
+    let output = Command::new("sh")
+        .arg("-c")
+        .arg(flow_data.shell_str)
+        .stdout(std::process::Stdio::piped())
+        .spawn();
+
+    let mut child = match output {
+        Ok(child) => child,
+        Err(e) => {
+            return HttpResponse::InternalServerError().body(format!("Command spawn error: {}", e))
+        }
+    };
+
+    let stdout = match child.stdout.take() {
+        Some(stdout) => stdout,
+        None => return HttpResponse::InternalServerError().body("Failed to capture stdout"),
+    };
+
+    let (sender, receiver) = mpsc::channel(1);
+    let reader = BufReader::new(stdout);
+
+    tokio::spawn(async move {
+        let mut lines = reader.lines();
+        while let Some(line) = lines.next_line().await.unwrap() {
+            sender.send(Ok(line)).await.unwrap();
+        }
+    });
+
+    HttpResponse::Ok()
+        .content_type("text/event-stream")
+        .streaming(LineStream { receiver })
 }
