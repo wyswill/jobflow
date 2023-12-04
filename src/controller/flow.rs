@@ -11,6 +11,11 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 use tokio::sync::mpsc;
 
+enum HasFlowInDb<T> {
+    Has(T),
+    None(T),
+}
+
 #[post("/get_flow_list")]
 pub async fn get_flow_list(
     _req: web::Json<FlowPageQuery>,
@@ -141,31 +146,45 @@ pub async fn create_flow(
     res
 }
 
-async fn check_flow_in_db(db: &RBatis, id: &str) -> Option<ResponseBody<String>> {
-    let db_flow = Flow::select_by_id(db, id)
+#[get("/get_detail")]
+async fn get_detail(_req: web::Query<IdReq>, _data: web::Data<DataStore>) -> impl Responder {
+    let data = Flow::select_by_id(&_data.db, &_req.id.to_string())
         .await
-        .expect("flow不存在,删除失败");
+        .expect("flow不存在");
+    return ResponseBody {
+        rsp_code: 0,
+        rsp_msg: "".to_string(),
+        data,
+    };
+}
+
+async fn check_flow_in_db(db: &RBatis, id: &str) -> HasFlowInDb<ResponseBody<Option<Flow>>> {
+    let db_flow: Option<Flow> = Flow::select_by_id(db, id).await.expect("flow不存在");
 
     match db_flow {
-        Some(_) => None,
-        _ => Some(ResponseBody {
+        Some(_) => HasFlowInDb::Has(ResponseBody {
             rsp_code: -1,
             rsp_msg: "查询flow失败".to_string(),
-            data: "".to_string(),
+            data: db_flow,
+        }),
+        _ => HasFlowInDb::None(ResponseBody {
+            rsp_code: -1,
+            rsp_msg: "查询flow失败".to_string(),
+            data: None,
         }),
     }
 }
 
 #[delete("/delete_flow")]
 pub async fn delete_flow(_req: web::Json<IdReq>, _data: web::Data<DataStore>) -> impl Responder {
-    let mut res = ResponseBody {
+    let mut res: ResponseBody<Option<Flow>> = ResponseBody {
         rsp_code: 0,
         rsp_msg: "".to_string(),
-        data: "".to_string(),
+        data: None,
     };
 
     match check_flow_in_db(&_data.db, &_req.id.to_string()).await {
-        Some(check_res) => {
+        HasFlowInDb::None(check_res) => {
             return check_res;
         }
         _ => {}
@@ -184,25 +203,35 @@ pub async fn update_flow(
     _req: web::Json<UpdateFLowReq>,
     _data: web::Data<DataStore>,
 ) -> impl Responder {
-    let res = ResponseBody {
+    let mut res: ResponseBody<Option<Flow>> = ResponseBody {
         rsp_code: 0,
         rsp_msg: "".to_string(),
-        data: "".to_string(),
+        data: None,
     };
 
     match check_flow_in_db(&_data.db, &_req.id.to_string()).await {
-        Some(check_res) => {
+        HasFlowInDb::None(check_res) => {
             return check_res;
         }
-        _ => {}
-    }
-
+        HasFlowInDb::Has(db_flow) => {
+            let table = Flow {
+                id: Some(_req.id as i16),
+                name: _req.flow_name.clone(),
+                shell_str: _req.shell_str.clone(),
+                create_time: db_flow.data.unwrap().create_time,
+                update_time: get_current_time_fmt(),
+            };
+            let _ = Flow::update_by_column(&_data.db, &table, "id")
+                .await
+                .expect("更新流程失败");
+            res.rsp_msg = "更新成功".to_string();
+        }
+    };
     res
 }
 
 #[get("/execute")]
 async fn execute(_req: web::Query<IdReq>, _data: web::Data<DataStore>) -> impl Responder {
-    println!("{:#?}", _req);
     let flow_data: Flow = Flow::select_by_id(&_data.db, &_req.id.to_string())
         .await
         .expect("流程查询失败")
@@ -224,7 +253,7 @@ async fn execute(_req: web::Query<IdReq>, _data: web::Data<DataStore>) -> impl R
         Some(stdout) => stdout,
         None => return HttpResponse::InternalServerError().body("Failed to capture stdout"),
     };
-
+    
     let (sender, receiver) = mpsc::channel(1);
     let reader = BufReader::new(stdout);
 

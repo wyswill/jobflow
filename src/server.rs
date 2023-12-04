@@ -20,6 +20,8 @@ fn flow_config(cfg: &mut web::ServiceConfig) {
     cfg.service(flow::get_flow_list);
     cfg.service(flow::delete_flow);
     cfg.service(flow::execute);
+    cfg.service(flow::get_detail);
+    cfg.service(flow::update_flow);
 }
 
 /**
