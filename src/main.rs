@@ -17,9 +17,11 @@ use fast_log::{
 use server::start_http_server;
 use util::MainFlow;
 
+
 //将 async main 函数标记为 actix 系统的入口点。
 #[actix_web::main]
 async fn main() {
+ 
     fast_log::init(Config::new().console().chan_len(Some(100000)).file_split(
         "logs/",
         LogSize::MB(10),

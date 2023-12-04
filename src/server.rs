@@ -4,6 +4,7 @@ use crate::{
 };
 use actix_cors::Cors;
 use actix_web::{http, web, App, HttpServer};
+use actix_web_static_files::ResourceFiles;
 /**
  * 项目接口router
  */
@@ -24,6 +25,7 @@ fn flow_config(cfg: &mut web::ServiceConfig) {
     cfg.service(flow::update_flow);
 }
 
+include!(concat!(env!("OUT_DIR"), "/generated.rs"));
 /**
  * 启动服务
  */
@@ -33,6 +35,7 @@ pub async fn start_http_server(config: &MainFlow) {
     let app_data: web::Data<DataStore> = web::Data::new(DataStore { db });
 
     let _ = HttpServer::new(move || {
+        let _generated = generate();
         App::new()
             .wrap(
                 Cors::default()
@@ -48,6 +51,7 @@ pub async fn start_http_server(config: &MainFlow) {
             .app_data(app_data.clone())
             .service(web::scope("/api/project").configure(project_config))
             .service(web::scope("/api/flow").configure(flow_config))
+            .service(ResourceFiles::new("/", _generated))
     })
     .workers(config.config.server_worker_size)
     .bind(MainFlow::gen_server_url())
