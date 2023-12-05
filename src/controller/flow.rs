@@ -254,13 +254,14 @@ async fn execute(_req: web::Query<IdReq>, _data: web::Data<DataStore>) -> impl R
         Some(stdout) => stdout,
         None => return HttpResponse::InternalServerError().body("Failed to capture stdout"),
     };
-    
+
     let (sender, receiver) = mpsc::channel(10);
     let reader = BufReader::new(stdout);
 
     tokio::spawn(async move {
         let mut lines = reader.lines();
-        while let Some(line) = lines.next_line().await.unwrap() {
+        while let Some(mut line) = lines.next_line().await.unwrap() {
+            line.push_str("\n");
             sender.send(Ok(line)).await.unwrap();
         }
     });
