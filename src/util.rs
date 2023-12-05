@@ -43,7 +43,7 @@ impl MainFlow {
      * 生成服务启动日志
      */
     pub fn gen_server_url(&mut self) -> String {
-        let host = "127.0.0.1";
+        let host = "0.0.0.0";
         let url = format!("{}:{}", host, self.config.server_port);
         info!("server is on, addr http://{}", url);
         return url;
@@ -54,6 +54,7 @@ impl MainFlow {
      */
     fn prase_config() -> ProgramConfig {
         let args: Vec<String> = env::args().collect();
+        println!("{:?}", args);
         if let Some(config_path) = args.get(1) {
             let yaml_str = fs::read_to_string(config_path).expect("配置读取失败");
             let conf: ProgramConfig = serde_yaml::from_str(&yaml_str).expect("配置转换失败");
