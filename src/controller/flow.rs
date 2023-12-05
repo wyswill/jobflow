@@ -244,6 +244,7 @@ async fn execute(_req: web::Query<IdReq>, _data: web::Data<DataStore>) -> impl R
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
         .spawn();
+    // TODO: 加入取消job 功能 加入执行完成回调
     let mut child = match output {
         Ok(child) => child,
         Err(e) => {

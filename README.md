@@ -54,6 +54,20 @@ create table project_flow
 
 [ ] 并发flow执行
 
-[ ] 沙箱flow执行
+[ ] 取消flow执行
 
-[ ] flow 语法
+[ ] 预先执行脚本
+
+git :
+	clone
+	tag
+	push
+
+docker:
+	build
+	push
+
+[ ] 预执行脚本可以编辑
+
+[ ] 密钥系统 实现变量注入
+
