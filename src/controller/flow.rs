@@ -236,33 +236,53 @@ async fn execute(_req: web::Query<IdReq>, _data: web::Data<DataStore>) -> impl R
         .await
         .expect("流程查询失败")
         .unwrap();
+
     // 执行命令前跳转到work dir中
     let output = Command::new("sh")
         .arg("-c")
         .arg(flow_data.shell_str)
         .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
         .spawn();
-
     let mut child = match output {
         Ok(child) => child,
         Err(e) => {
-            return HttpResponse::InternalServerError().body(format!("Command spawn error: {}", e))
+            println!("{:#?}", e);
+            return HttpResponse::InternalServerError().body(format!("Command spawn error: {}", e));
         }
     };
+    // 创建输出流
+    let (sender, receiver) = mpsc::channel(10);
 
+    // 拿去标准输出和标准错误输出
     let stdout = match child.stdout.take() {
         Some(stdout) => stdout,
         None => return HttpResponse::InternalServerError().body("Failed to capture stdout"),
     };
+    let stderr = match child.stderr.take() {
+        Some(stderr) => stderr,
+        None => return HttpResponse::InternalServerError().body("Failed to capture stderr"),
+    };
 
-    let (sender, receiver) = mpsc::channel(10);
-    let reader = BufReader::new(stdout);
+    // 创建流读取器
+    let stdout_reader = BufReader::new(stdout);
+    let stderr_reader = BufReader::new(stderr);
 
+    let sender_stdout = sender.clone();
     tokio::spawn(async move {
-        let mut lines = reader.lines();
+        let mut lines = stdout_reader.lines();
         while let Some(mut line) = lines.next_line().await.unwrap() {
             line.push_str("\n");
-            sender.send(Ok(line)).await.unwrap();
+            sender_stdout.send(Ok(line)).await.unwrap();
+        }
+    });
+
+    let sender_stderr = sender.clone();
+    tokio::spawn(async move {
+        let mut lines = stderr_reader.lines();
+        while let Some(mut line) = lines.next_line().await.unwrap() {
+            line.push_str("\n");
+            sender_stderr.send(Ok(line)).await.unwrap();
         }
     });
 
