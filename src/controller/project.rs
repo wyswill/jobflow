@@ -1,5 +1,5 @@
 use crate::{
-    entity::project::Project,
+    entity::{fow::Flow, project::Project, project_flow::ProjectFlow},
     request::{CreateProjectBody, IdReq, PageQuery},
     response::ResponseBody,
     util::{get_current_time_fmt, DataStore},
@@ -79,6 +79,20 @@ pub async fn delete_project(_req: web::Json<IdReq>, _data: web::Data<DataStore>)
             return res;
         }
     }
+
+    let flow_relation = ProjectFlow::select_by_project_id(&_data.db, _req.id)
+        .await
+        .expect("查询关系失败");
+
+    for fr in flow_relation {
+        let _ = Flow::delete_by_column(&_data.db, "id", fr.flow_id)
+            .await
+            .expect("删除flow失败");
+    }
+
+    let _ = ProjectFlow::delete_by_project_id(&_data.db, _req.id)
+        .await
+        .expect("删除关联的flow");
 
     let _ = Project::delete_by_column(&_data.db, "id", &_req.id)
         .await
