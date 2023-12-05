@@ -4,9 +4,9 @@ use log::info;
 use rbatis::RBatis;
 use rbdc_mysql::driver::MysqlDriver;
 use serde::{Deserialize, Serialize};
-use std::env;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+use std::{env, fs};
 use tokio::sync::mpsc;
 use tokio_stream::Stream;
 use tokio_util::bytes::Bytes;
@@ -15,6 +15,7 @@ use tokio_util::bytes::Bytes;
 pub struct ProgramConfig {
     pub db_url: String,
     pub server_worker_size: usize,
+    pub server_port: String,
 }
 pub struct DataStore {
     pub db: RBatis,
@@ -35,21 +36,15 @@ pub struct MainFlow {
 }
 impl MainFlow {
     pub async fn init() -> MainFlow {
-        let config = MainFlow::prase_config();
+        let config: ProgramConfig = MainFlow::prase_config();
         MainFlow { config }
     }
     /**
      * 生成服务启动日志
      */
-    pub fn gen_server_url() -> String {
-        let args: Vec<String> = env::args().collect();
-        println!("cmd arg {:?}", args);
+    pub fn gen_server_url(&mut self) -> String {
         let host = "127.0.0.1";
-        let mut port = "8081";
-        if let Some(val) = args.get(1) {
-            port = val;
-        }
-        let url = format!("{}:{}", host, port);
+        let url = format!("{}:{}", host, self.config.server_port);
         info!("server is on, addr http://{}", url);
         return url;
     }
@@ -58,10 +53,15 @@ impl MainFlow {
      * 解析服务配置
      */
     fn prase_config() -> ProgramConfig {
-        let yaml_str = include_str!("../config.yml");
-        let conf: ProgramConfig = serde_yaml::from_str(yaml_str).unwrap();
-        println!("config: {:#?}", conf);
-        return conf;
+        let args: Vec<String> = env::args().collect();
+        if let Some(config_path) = args.get(1) {
+            let yaml_str = fs::read_to_string(config_path).expect("配置读取失败");
+            let conf: ProgramConfig = serde_yaml::from_str(&yaml_str).expect("配置转换失败");
+            println!("config: {:#?}", conf);
+            return conf;
+        } else {
+            panic!("配置读取失败");
+        }
     }
 
     /**

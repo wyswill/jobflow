@@ -29,7 +29,7 @@ include!(concat!(env!("OUT_DIR"), "/generated.rs"));
 /**
  * 启动服务
  */
-pub async fn start_http_server(config: &MainFlow) {
+pub async fn start_http_server(config: &mut MainFlow) {
     let db = config.init_db(&config.config.db_url).await;
     //创建 http 服务器
     let app_data: web::Data<DataStore> = web::Data::new(DataStore { db });
@@ -54,7 +54,7 @@ pub async fn start_http_server(config: &MainFlow) {
             .service(ResourceFiles::new("/", _generated))
     })
     .workers(config.config.server_worker_size)
-    .bind(MainFlow::gen_server_url())
+    .bind(config.gen_server_url())
     .expect("服务启动失败")
     .run()
     .await;

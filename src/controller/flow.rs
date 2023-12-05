@@ -236,6 +236,7 @@ async fn execute(_req: web::Query<IdReq>, _data: web::Data<DataStore>) -> impl R
         .await
         .expect("流程查询失败")
         .unwrap();
+    // 执行命令前跳转到work dir中
     let output = Command::new("sh")
         .arg("-c")
         .arg(flow_data.shell_str)
@@ -254,7 +255,7 @@ async fn execute(_req: web::Query<IdReq>, _data: web::Data<DataStore>) -> impl R
         None => return HttpResponse::InternalServerError().body("Failed to capture stdout"),
     };
     
-    let (sender, receiver) = mpsc::channel(1);
+    let (sender, receiver) = mpsc::channel(10);
     let reader = BufReader::new(stdout);
 
     tokio::spawn(async move {
