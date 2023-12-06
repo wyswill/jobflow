@@ -2,7 +2,7 @@ use crate::{
     entity::{fow::Flow, project::Project, project_flow::ProjectFlow},
     request::{CreateProjectBody, IdReq, PageQuery},
     response::ResponseBody,
-    util::{get_current_time_fmt, DataStore},
+    util::{get_current_time_fmt, DataStore, ShellUtil},
 };
 use actix_web::{delete, post, web, Responder};
 use rbatis::{sql::PageRequest, RBatis};
@@ -88,6 +88,16 @@ pub async fn delete_project(_req: web::Json<IdReq>, _data: web::Data<DataStore>)
         let _ = Flow::delete_by_column(&_data.db, "id", fr.flow_id)
             .await
             .expect("删除flow失败");
+    }
+
+    let work_space = ShellUtil::check_work_space(
+        _data.work_space.clone(),
+        db_project.unwrap().name,
+        "".to_string(),
+    );
+    
+    if let Err(e) = ShellUtil::del_work_space(work_space) {
+        panic!("{}", e.to_string());
     }
 
     let _ = ProjectFlow::delete_by_project_id(&_data.db, _req.id)
