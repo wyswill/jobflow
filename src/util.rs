@@ -121,7 +121,7 @@ impl ShellUtil {
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .spawn();
-        // TODO: 加入取消job 功能 加入执行完成回调
+
         let mut child = match output {
             Ok(child) => child,
             Err(e) => {
@@ -149,20 +149,28 @@ impl ShellUtil {
         let stderr_reader = BufReader::new(stderr);
 
         let sender_stdout = sender.clone();
+        let sender_stderr = sender.clone();
+        let out = sender.clone();
         tokio::spawn(async move {
             let mut lines = stdout_reader.lines();
             while let Some(mut line) = lines.next_line().await.unwrap() {
                 line.push_str("\n");
                 sender_stdout.send(Ok(line)).await.unwrap();
             }
-        });
 
-        let sender_stderr = sender.clone();
-        tokio::spawn(async move {
+
             let mut lines = stderr_reader.lines();
             while let Some(mut line) = lines.next_line().await.unwrap() {
                 line.push_str("\n");
                 sender_stderr.send(Ok(line)).await.unwrap();
+            }
+
+            match child.wait().await {
+                Ok(status) => out
+                    .send(Ok(format!("{}", status.to_string())))
+                    .await
+                    .unwrap(),
+                Err(e) => println!("Failed to wait for child process: {}", e),
             }
         });
 
