@@ -1,4 +1,5 @@
 extern crate serde_yaml;
+use actix_web::{HttpResponse, Responder};
 use chrono::{DateTime, Local, Utc};
 use log::info;
 use rbatis::RBatis;
@@ -6,7 +7,9 @@ use rbdc_mysql::driver::MysqlDriver;
 use serde::{Deserialize, Serialize};
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use std::{env, fs};
+use std::{env, fs, path};
+use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::process::Command;
 use tokio::sync::mpsc;
 use tokio_stream::Stream;
 use tokio_util::bytes::Bytes;
@@ -16,9 +19,11 @@ pub struct ProgramConfig {
     pub db_url: String,
     pub server_worker_size: usize,
     pub server_port: String,
+    pub work_space: String,
 }
 pub struct DataStore {
     pub db: RBatis,
+    pub work_space: String,
 }
 
 /**
@@ -89,5 +94,80 @@ impl Stream for LineStream {
             Poll::Ready(None) => Poll::Ready(None),
             Poll::Pending => Poll::Pending,
         }
+    }
+}
+
+pub struct ShellUtil;
+
+impl ShellUtil {
+    pub fn check_work_space(work_space: String, project_name: String, flow_name: String) -> String {
+        let root_dir = path::Path::new(&work_space);
+        let root_dir = root_dir.join(project_name).join(flow_name);
+        if !root_dir.exists() {
+            fs::create_dir_all(root_dir.clone()).expect("创建work space 失败");
+        }
+        root_dir.to_str().unwrap().to_string()
+    }
+
+    pub fn del_work_space(work_space: String) -> Result<(), std::io::Error> {
+        let res: Result<(), std::io::Error> = fs::remove_dir_all(path::Path::new(&work_space));
+        res
+    }
+
+    pub fn exec_shell(shell_str: String) -> impl Responder {
+        let output = Command::new("sh")
+            .arg("-c")
+            .arg(shell_str)
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn();
+        // TODO: 加入取消job 功能 加入执行完成回调
+        let mut child = match output {
+            Ok(child) => child,
+            Err(e) => {
+                println!("{:#?}", e);
+                return HttpResponse::InternalServerError()
+                    .body(format!("Command spawn error: {}", e));
+            }
+        };
+
+        // 创建输出流
+        let (sender, receiver) = mpsc::channel(10);
+
+        // 拿去标准输出和标准错误输出
+        let stdout = match child.stdout.take() {
+            Some(stdout) => stdout,
+            None => return HttpResponse::InternalServerError().body("Failed to capture stdout"),
+        };
+        let stderr = match child.stderr.take() {
+            Some(stderr) => stderr,
+            None => return HttpResponse::InternalServerError().body("Failed to capture stderr"),
+        };
+
+        // 创建流读取器
+        let stdout_reader = BufReader::new(stdout);
+        let stderr_reader = BufReader::new(stderr);
+
+        let sender_stdout = sender.clone();
+        tokio::spawn(async move {
+            let mut lines = stdout_reader.lines();
+            while let Some(mut line) = lines.next_line().await.unwrap() {
+                line.push_str("\n");
+                sender_stdout.send(Ok(line)).await.unwrap();
+            }
+        });
+
+        let sender_stderr = sender.clone();
+        tokio::spawn(async move {
+            let mut lines = stderr_reader.lines();
+            while let Some(mut line) = lines.next_line().await.unwrap() {
+                line.push_str("\n");
+                sender_stderr.send(Ok(line)).await.unwrap();
+            }
+        });
+
+        HttpResponse::Ok()
+            .content_type("text/event-stream")
+            .streaming(LineStream { receiver })
     }
 }

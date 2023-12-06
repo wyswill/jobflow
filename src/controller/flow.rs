@@ -1,15 +1,12 @@
 use crate::{
-    entity::{fow::Flow, project_flow::ProjectFlow},
+    entity::{fow::Flow, project::Project, project_flow::ProjectFlow},
     request::{CreateFlowReq, FlowPageQuery, IdReq, UpdateFLowReq},
     response::ResponseBody,
-    util::{get_current_time_fmt, DataStore, LineStream},
+    util::{get_current_time_fmt, DataStore, ShellUtil},
 };
-use actix_web::{delete, get, post, web, HttpResponse, Responder};
+use actix_web::{delete, get, post, web, Responder};
 use rbatis::{rbdc::db::ExecResult, sql::Page, RBatis};
 use rbs::{to_value, Value};
-use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::process::Command;
-use tokio::sync::mpsc;
 
 enum HasFlowInDb<T> {
     Has(T),
@@ -187,7 +184,15 @@ pub async fn delete_flow(_req: web::Json<IdReq>, _data: web::Data<DataStore>) ->
         HasFlowInDb::None(check_res) => {
             return check_res;
         }
-        _ => {}
+        HasFlowInDb::Has(db_flow) => {
+            let flow_data = db_flow.data.unwrap();
+            let project: Project = get_project_by_flow_id(&_data.db, flow_data.id.unwrap()).await;
+            let work_space =
+                ShellUtil::check_work_space(_data.work_space.clone(), project.name, flow_data.name);
+            if let Err(e) = ShellUtil::del_work_space(work_space) {
+                panic!("{}", e.to_string());
+            }
+        }
     }
 
     let _ = Flow::delete_by_column(&_data.db, "id", &_req.id)
@@ -196,6 +201,11 @@ pub async fn delete_flow(_req: web::Json<IdReq>, _data: web::Data<DataStore>) ->
     res.rsp_msg = "flow删除成功".to_string();
 
     res
+}
+
+async fn get_project_by_flow_id(db: &RBatis, id: i16) -> Project {
+    let project: Project = db.query_decode("select project.* from project left join job_flow.project_flow pf on project.id = pf.project_id where pf.flow_id = ?", vec![to_value!(id)]).await.expect("查询项目失败");
+    project
 }
 
 #[post("/update_flow")]
@@ -237,57 +247,11 @@ async fn execute(_req: web::Query<IdReq>, _data: web::Data<DataStore>) -> impl R
         .expect("流程查询失败")
         .unwrap();
 
-    // 执行命令前跳转到work dir中
-    let output = Command::new("sh")
-        .arg("-c")
-        .arg(flow_data.shell_str)
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .spawn();
-    // TODO: 加入取消job 功能 加入执行完成回调
-    let mut child = match output {
-        Ok(child) => child,
-        Err(e) => {
-            println!("{:#?}", e);
-            return HttpResponse::InternalServerError().body(format!("Command spawn error: {}", e));
-        }
-    };
-    // 创建输出流
-    let (sender, receiver) = mpsc::channel(10);
+    let project: Project = get_project_by_flow_id(&_data.db, flow_data.id.unwrap()).await;
 
-    // 拿去标准输出和标准错误输出
-    let stdout = match child.stdout.take() {
-        Some(stdout) => stdout,
-        None => return HttpResponse::InternalServerError().body("Failed to capture stdout"),
-    };
-    let stderr = match child.stderr.take() {
-        Some(stderr) => stderr,
-        None => return HttpResponse::InternalServerError().body("Failed to capture stderr"),
-    };
-
-    // 创建流读取器
-    let stdout_reader = BufReader::new(stdout);
-    let stderr_reader = BufReader::new(stderr);
-
-    let sender_stdout = sender.clone();
-    tokio::spawn(async move {
-        let mut lines = stdout_reader.lines();
-        while let Some(mut line) = lines.next_line().await.unwrap() {
-            line.push_str("\n");
-            sender_stdout.send(Ok(line)).await.unwrap();
-        }
-    });
-
-    let sender_stderr = sender.clone();
-    tokio::spawn(async move {
-        let mut lines = stderr_reader.lines();
-        while let Some(mut line) = lines.next_line().await.unwrap() {
-            line.push_str("\n");
-            sender_stderr.send(Ok(line)).await.unwrap();
-        }
-    });
-
-    HttpResponse::Ok()
-        .content_type("text/event-stream")
-        .streaming(LineStream { receiver })
+    let work_space =
+        ShellUtil::check_work_space(_data.work_space.clone(), project.name, flow_data.name);
+    let mut cd_shell = format!("cd {} \n", work_space);
+    cd_shell.push_str(&flow_data.shell_str);
+    ShellUtil::exec_shell(cd_shell)
 }
