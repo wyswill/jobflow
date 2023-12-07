@@ -7,7 +7,6 @@ use crate::{
 use actix_web::{delete, get, post, web, Responder};
 use rbatis::{rbdc::db::ExecResult, sql::Page, RBatis};
 use rbs::{to_value, Value};
-
 enum HasFlowInDb<T> {
     Has(T),
     None(T),
@@ -253,5 +252,24 @@ async fn execute(_req: web::Query<IdReq>, _data: web::Data<DataStore>) -> impl R
         ShellUtil::check_work_space(_data.work_space.clone(), project.name, flow_data.name);
     let mut cd_shell = format!("cd {} \n", work_space);
     cd_shell.push_str(&flow_data.shell_str);
-    ShellUtil::exec_shell(cd_shell)
+
+    // 从cache中检测是否已经有执行的任务
+
+    let map = _data.executing_child.lock().await;
+
+    let res = match map.get(&flow_data.id.unwrap()) {
+        Some(tk) => {
+            if let Some(child) = tk {
+                return ShellUtil::exec_shell(child);
+            } else {
+                let child = ShellUtil::spawn_new_command(cd_shell);
+                ShellUtil::exec_shell(child)
+            }
+        }
+        _ => {
+            let child = ShellUtil::spawn_new_command(cd_shell);
+            ShellUtil::exec_shell(child)
+        }
+    };
+    res
 }

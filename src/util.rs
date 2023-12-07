@@ -5,12 +5,15 @@ use log::info;
 use rbatis::RBatis;
 use rbdc_mysql::driver::MysqlDriver;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::pin::Pin;
+use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::{env, fs, path};
 use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::process::Command;
+use tokio::process::{Child, Command};
 use tokio::sync::mpsc;
+use tokio::sync::Mutex;
 use tokio_stream::Stream;
 use tokio_util::bytes::Bytes;
 
@@ -24,6 +27,7 @@ pub struct ProgramConfig {
 pub struct DataStore {
     pub db: RBatis,
     pub work_space: String,
+    pub executing_child: Arc<Mutex<HashMap<i16, Option<Child>>>>,
 }
 
 /**
@@ -51,7 +55,7 @@ impl MainFlow {
         let host = "0.0.0.0";
         let url = format!("{}:{}", host, self.config.server_port);
         info!("server is on, addr http://{}", url);
-        return url;
+        url
     }
 
     /**
@@ -64,7 +68,7 @@ impl MainFlow {
             let yaml_str = fs::read_to_string(config_path).expect("配置读取失败");
             let conf: ProgramConfig = serde_yaml::from_str(&yaml_str).expect("配置转换失败");
             println!("config: {:#?}", conf);
-            return conf;
+            conf
         } else {
             panic!("配置读取失败");
         }
@@ -76,7 +80,7 @@ impl MainFlow {
     pub async fn init_db(&self, db_url: &str) -> RBatis {
         let rb = RBatis::new();
         rb.link(MysqlDriver {}, db_url).await.unwrap();
-        return rb;
+        rb
     }
 }
 
@@ -114,23 +118,23 @@ impl ShellUtil {
         res
     }
 
-    pub fn exec_shell(shell_str: String) -> impl Responder {
+    pub fn spawn_new_command(shell_str: String) -> Child {
         let output = Command::new("sh")
             .arg("-c")
             .arg(shell_str)
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .spawn();
-
-        let mut child = match output {
+        let child = match output {
             Ok(child) => child,
             Err(e) => {
-                println!("{:#?}", e);
-                return HttpResponse::InternalServerError()
-                    .body(format!("Command spawn error: {}", e));
+                panic!("{}", e);
             }
         };
+        child
+    }
 
+    pub fn exec_shell(mut child: Child) -> impl Responder {
         // 创建输出流
         let (sender, receiver) = mpsc::channel(10);
 
@@ -157,7 +161,6 @@ impl ShellUtil {
                 line.push_str("\n");
                 sender_stdout.send(Ok(line)).await.unwrap();
             }
-
 
             let mut lines = stderr_reader.lines();
             while let Some(mut line) = lines.next_line().await.unwrap() {
