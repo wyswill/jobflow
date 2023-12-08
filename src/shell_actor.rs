@@ -23,6 +23,16 @@ impl Handler<ShellExecute> for Despatch {
     type Result = String;
 
     fn handle(&mut self, msg: ShellExecute, ctx: &mut Self::Context) -> Self::Result {
+        let _ = ctx;
         msg.shell_string
     }
 }
+
+// impl StreamHandler<String> for Despatch {
+//     type Result = ResponseFuture<Result<web::Bytes, actix_web::Error>>;
+//     fn handle(&mut self, item: String, _ctx: &mut Self::Context) -> Self::Result {
+//         Box::pin(async {
+//             Ok(web::Bytes::from_static(b"data\n"))
+//         })
+//     }
+// }

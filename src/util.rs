@@ -29,8 +29,7 @@ pub struct ProgramConfig {
 pub struct DataStore {
     pub db: RBatis,
     pub work_space: String,
-    pub executing_child: Arc<Mutex<HashMap<i16, Option<Child>>>>,
-    pub despatch: Arc<Mutex<Addr<Despatch>>>,
+    pub despatch_map: Arc<Mutex<HashMap<i16, Addr<Despatch>>>>,
 }
 
 /**

@@ -1,10 +1,13 @@
+use std::default;
+
 use crate::{
     entity::{fow::Flow, project::Project, project_flow::ProjectFlow},
     request::{CreateFlowReq, FlowPageQuery, IdReq, UpdateFLowReq},
     response::ResponseBody,
-    shell_actor::ShellExecute,
+    shell_actor::{Despatch, ShellExecute},
     util::{get_current_time_fmt, DataStore, LineStream, ShellUtil},
 };
+use actix::Actor;
 use actix_web::{delete, get, post, web, HttpResponse, Responder};
 use rbatis::{rbdc::db::ExecResult, sql::Page, RBatis};
 use rbs::{to_value, Value};
@@ -261,9 +264,10 @@ async fn execute(_req: web::Query<IdReq>, app_data: web::Data<DataStore>) -> imp
 
     // 创建输出流
     let (sender, receiver) = mpsc::channel(10);
+    let despatch = Despatch::default().start();
 
-    let despatch = app_data.despatch.lock().await;
 
+    
     let res = despatch
         .send(ShellExecute {
             shell_string: cd_shell,
