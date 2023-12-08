@@ -1,7 +1,9 @@
 use crate::{
     controller::{flow, project},
+    shell_actor::Despatch,
     util::{DataStore, MainFlow},
 };
+use actix::Actor;
 use actix_cors::Cors;
 use actix_web::{http, web, App, HttpServer};
 use actix_web_static_files::ResourceFiles;
@@ -34,11 +36,14 @@ include!(concat!(env!("OUT_DIR"), "/generated.rs"));
  */
 pub async fn start_http_server(config: &mut MainFlow) {
     let db = config.init_db(&config.config.db_url).await;
+    let despatch = Despatch::default();
+    let addr = despatch.start();
     //创建 http 服务器
     let app_data: web::Data<DataStore> = web::Data::new(DataStore {
         db,
         work_space: config.config.work_space.clone(),
         executing_child: Arc::new(Mutex::new(HashMap::new())),
+        despatch: Arc::new(Mutex::new(addr)),
     });
 
     let _ = HttpServer::new(move || {

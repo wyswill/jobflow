@@ -1,53 +1,28 @@
-use actix::{Actor, Addr, AsyncContext, Context, Handler, Message, Running};
-use std::process::Stdio;
-use tokio::{
-    io::{AsyncBufReadExt, BufReader},
-    process::Command,
-};
+use actix::{Actor, Context, Handler, Message};
 
-struct Executor {
-    command: Option<tokio::process::Child>,
-}
+pub struct Despatch;
 
-impl Actor for Executor {
-    type Context = Context<Self>;
-
-    fn stopping(&mut self, _: &mut Self::Context) -> Running {
-        if let Some(mut command) = self.command.take() {
-            let _ = command.kill();
-        }
-        Running::Stop
+impl Default for Despatch {
+    fn default() -> Self {
+        Self {}
     }
 }
 
-struct ExecuteScript(String);
-
-impl Message for ExecuteScript {
-    type Result = Result<Addr<Executor>, std::io::Error>;
+impl Actor for Despatch {
+    type Context = Context<Self>;
 }
-impl Handler<ExecuteScript> for Executor {
-    type Result = Result<Addr<Executor>, std::io::Error>;
+pub struct ShellExecute {
+    pub shell_string: String,
+}
 
-    fn handle(&mut self, msg: ExecuteScript, ctx: &mut Self::Context) -> Self::Result {
-        let script = &msg.0;
-        let output = Command::new("sh")
-            .arg("-c")
-            .arg(&script)
-            .stdout(Stdio::piped())
-            .spawn()
-            .expect("failed to execute process");
+impl Message for ShellExecute {
+    type Result = String;
+}
 
-        // let addr = ctx.address();
-        let mut reader = BufReader::new(output.stdout.unwrap()).lines();
-        actix::spawn(async move {
-            if let Some(mut line) = reader.next_line().await.unwrap() {
-                line.push_str("\n");
-            }
-            futures::future::ready(())
-        });
+impl Handler<ShellExecute> for Despatch {
+    type Result = String;
 
-        // self.command = Some(output);
-
-        Ok(ctx.address())
+    fn handle(&mut self, msg: ShellExecute, ctx: &mut Self::Context) -> Self::Result {
+        msg.shell_string
     }
 }
