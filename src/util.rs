@@ -133,7 +133,7 @@ impl ShellUtil {
         child
     }
 
-    pub fn get_std(child: &mut Child) -> (BufReader<ChildStdout>, BufReader<ChildStderr>) {
+    pub fn get_std_reader(child: &mut Child) -> (BufReader<ChildStdout>, BufReader<ChildStderr>) {
         // 拿去标准输出和标准错误输出
         let stdout = match child.stdout.take() {
             Some(stdout) => stdout,

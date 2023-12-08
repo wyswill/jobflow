@@ -273,7 +273,7 @@ async fn execute(_req: web::Query<IdReq>, app_data: web::Data<DataStore>) -> imp
         _ => {
             let mut child = ShellUtil::spawn_new_command(cd_shell);
             // 拿去标准输出和标准错误输出
-            let (stdout_reader, stderr_reader) = ShellUtil::get_std(&mut child);
+            let (stdout_reader, stderr_reader) = ShellUtil::get_std_reader(&mut child);
             // 创建流读取器
             let mut lines = stdout_reader.lines();
             while let Some(mut line) = lines.next_line().await.unwrap() {

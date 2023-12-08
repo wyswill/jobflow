@@ -7,6 +7,7 @@ mod entity;
 mod request;
 mod response;
 mod server;
+mod shell_actor;
 mod util;
 
 use fast_log::{
