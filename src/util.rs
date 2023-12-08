@@ -1,5 +1,4 @@
 extern crate serde_yaml;
-use actix_web::{HttpResponse, Responder};
 use chrono::{DateTime, Local, Utc};
 use log::info;
 use rbatis::RBatis;
@@ -10,8 +9,8 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::{env, fs, path};
-use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::process::{Child, Command};
+use tokio::io::BufReader;
+use tokio::process::{Child, ChildStderr, ChildStdout, Command};
 use tokio::sync::mpsc;
 use tokio::sync::Mutex;
 use tokio_stream::Stream;
@@ -134,51 +133,20 @@ impl ShellUtil {
         child
     }
 
-    pub fn exec_shell(mut child: Child) -> impl Responder {
-        // 创建输出流
-        let (sender, receiver) = mpsc::channel(10);
-
+    pub fn get_std(child: &mut Child) -> (BufReader<ChildStdout>, BufReader<ChildStderr>) {
         // 拿去标准输出和标准错误输出
         let stdout = match child.stdout.take() {
             Some(stdout) => stdout,
-            None => return HttpResponse::InternalServerError().body("Failed to capture stdout"),
+            None => panic!("Failed to capture stdout"),
         };
         let stderr = match child.stderr.take() {
             Some(stderr) => stderr,
-            None => return HttpResponse::InternalServerError().body("Failed to capture stderr"),
+            None => panic!("Failed to capture stderr"),
         };
 
         // 创建流读取器
         let stdout_reader = BufReader::new(stdout);
         let stderr_reader = BufReader::new(stderr);
-
-        let sender_stdout = sender.clone();
-        let sender_stderr = sender.clone();
-        let out = sender.clone();
-        tokio::spawn(async move {
-            let mut lines = stdout_reader.lines();
-            while let Some(mut line) = lines.next_line().await.unwrap() {
-                line.push_str("\n");
-                sender_stdout.send(Ok(line)).await.unwrap();
-            }
-
-            let mut lines = stderr_reader.lines();
-            while let Some(mut line) = lines.next_line().await.unwrap() {
-                line.push_str("\n");
-                sender_stderr.send(Ok(line)).await.unwrap();
-            }
-
-            match child.wait().await {
-                Ok(status) => out
-                    .send(Ok(format!("{}", status.to_string())))
-                    .await
-                    .unwrap(),
-                Err(e) => println!("Failed to wait for child process: {}", e),
-            }
-        });
-
-        HttpResponse::Ok()
-            .content_type("text/event-stream")
-            .streaming(LineStream { receiver })
+        (stdout_reader, stderr_reader)
     }
 }
