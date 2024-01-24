@@ -1,23 +1,17 @@
 extern crate serde_yaml;
-use actix::Addr;
 use chrono::{DateTime, Local, Utc};
 use log::info;
 use rbatis::RBatis;
 use rbdc_mysql::driver::MysqlDriver;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::pin::Pin;
-use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::{env, fs, path};
 use tokio::io::BufReader;
 use tokio::process::{Child, ChildStderr, ChildStdout, Command};
 use tokio::sync::mpsc;
-use tokio::sync::Mutex;
 use tokio_stream::Stream;
 use tokio_util::bytes::Bytes;
-
-use crate::shell_actor::Despatch;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ProgramConfig {
@@ -29,7 +23,6 @@ pub struct ProgramConfig {
 pub struct DataStore {
     pub db: RBatis,
     pub work_space: String,
-    pub despatch_map: Arc<Mutex<HashMap<i16, Addr<Despatch>>>>,
 }
 
 /**

@@ -5,13 +5,12 @@ use crate::{
     request::{CreateFlowReq, FlowPageQuery, IdReq, UpdateFLowReq},
     response::ResponseBody,
     shell_actor::{Despatch, ShellExecute},
-    util::{get_current_time_fmt, DataStore, LineStream, ShellUtil},
+    util::{get_current_time_fmt, DataStore, ShellUtil},
 };
 use actix::Actor;
 use actix_web::{delete, get, post, web, HttpResponse, Responder};
 use rbatis::{rbdc::db::ExecResult, sql::Page, RBatis};
 use rbs::{to_value, Value};
-use tokio::sync::mpsc;
 // use tokio::{io::AsyncBufReadExt, sync::mpsc};
 enum HasFlowInDb<T> {
     Has(T),
@@ -247,8 +246,6 @@ pub async fn update_flow(
 
 #[get("/execute")]
 async fn execute(_req: web::Query<IdReq>, app_data: web::Data<DataStore>) -> impl Responder {
-    // let mut map = app_data.executing_child.lock().await;
-
     let flow_data: Flow = Flow::select_by_id(&app_data.db, &_req.id.to_string())
         .await
         .expect("流程查询失败")
@@ -260,8 +257,6 @@ async fn execute(_req: web::Query<IdReq>, app_data: web::Data<DataStore>) -> imp
         ShellUtil::check_work_space(app_data.work_space.clone(), project.name, flow_data.name);
     let mut shell_string = format!("cd {} \n", work_space);
     shell_string.push_str(&flow_data.shell_str);
-
-    //TODO: 从cache中检测是否已经有执行的任务
 
     // 创建输出流
     let despatch = Despatch.start();

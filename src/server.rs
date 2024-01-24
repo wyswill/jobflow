@@ -1,15 +1,10 @@
 use crate::{
     controller::{flow, project},
-    shell_actor::Despatch,
     util::{DataStore, MainFlow},
 };
-use actix::Actor;
 use actix_cors::Cors;
 use actix_web::{http, web, App, HttpServer};
 use actix_web_static_files::ResourceFiles;
-use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::Mutex;
 /**
  * 项目接口router
  */
@@ -40,7 +35,6 @@ pub async fn start_http_server(config: &mut MainFlow) {
     let app_data: web::Data<DataStore> = web::Data::new(DataStore {
         db,
         work_space: config.config.work_space.clone(),
-        despatch_map: Arc::new(Mutex::new(HashMap::new())),
     });
 
     let _ = HttpServer::new(move || {
