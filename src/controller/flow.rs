@@ -11,7 +11,8 @@ use actix::Actor;
 use actix_web::{delete, get, post, web, HttpResponse, Responder};
 use rbatis::{rbdc::db::ExecResult, sql::Page, RBatis};
 use rbs::{to_value, Value};
-use tokio::{io::AsyncBufReadExt, sync::mpsc};
+use tokio::sync::mpsc;
+// use tokio::{io::AsyncBufReadExt, sync::mpsc};
 enum HasFlowInDb<T> {
     Has(T),
     None(T),
@@ -257,69 +258,17 @@ async fn execute(_req: web::Query<IdReq>, app_data: web::Data<DataStore>) -> imp
 
     let work_space =
         ShellUtil::check_work_space(app_data.work_space.clone(), project.name, flow_data.name);
-    let mut cd_shell = format!("cd {} \n", work_space);
-    cd_shell.push_str(&flow_data.shell_str);
+    let mut shell_string = format!("cd {} \n", work_space);
+    shell_string.push_str(&flow_data.shell_str);
 
-    // 从cache中检测是否已经有执行的任务
+    //TODO: 从cache中检测是否已经有执行的任务
 
     // 创建输出流
-    let (sender, receiver) = mpsc::channel(10);
-    let despatch = Despatch::default().start();
+    let despatch = Despatch.start();
 
-
-    
-    let res = despatch
-        .send(ShellExecute {
-            shell_string: cd_shell,
-        })
-        .await;
-
-    let res = match res {
-        Ok(cmd_res) => cmd_res,
-        _ => "".to_string(),
-    };
-
-    sender.send(Ok(res)).await.unwrap();
-
-    // let sender_stdout = sender.clone();
-    // let sender_stderr = sender.clone();
-    // let out = sender.clone();
-    // match map.get_mut(&flow_data.id.unwrap()) {
-    //     Some(tk) => {
-    //         if let Some(child) = tk {
-    //             let _ = (*child).kill().await;
-    //         }
-    //     }
-    //     _ => {
-    //         let mut child = ShellUtil::spawn_new_command(cd_shell);
-    //         // 拿去标准输出和标准错误输出
-    //         let (stdout_reader, stderr_reader) = ShellUtil::get_std_reader(&mut child);
-    //         // 创建流读取器
-    //         let mut lines = stdout_reader.lines();
-    //         while let Some(mut line) = lines.next_line().await.unwrap() {
-    //             line.push_str("\n");
-    //             sender_stdout.send(Ok(line)).await.unwrap();
-    //         }
-
-    //         let mut lines = stderr_reader.lines();
-    //         while let Some(mut line) = lines.next_line().await.unwrap() {
-    //             line.push_str("\n");
-    //             sender_stderr.send(Ok(line)).await.unwrap();
-    //         }
-
-    //         match child.wait().await {
-    //             Ok(status) => out
-    //                 .send(Ok(format!("{}", status.to_string())))
-    //                 .await
-    //                 .unwrap(),
-    //             Err(e) => println!("Failed to wait for child process: {}", e),
-    //         }
-    //         // TODO: 插值
-    //         // map.insert(flow_data.id.unwrap(), Some(child));
-    //     }
-    // };
+    let line_stream = despatch.send(ShellExecute { shell_string }).await.unwrap();
 
     HttpResponse::Ok()
         .content_type("text/event-stream")
-        .streaming(LineStream { receiver })
+        .streaming(line_stream)
 }
