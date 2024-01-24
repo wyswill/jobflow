@@ -257,7 +257,7 @@ async fn execute(_req: web::Query<IdReq>, app_data: web::Data<DataStore>) -> imp
 
     // 创建输出流
     let despatch = Despatch.start();
-
+    // TODO:测试一下延时命令  
     let line_stream = despatch.send(ShellExecute { shell_string }).await.unwrap();
 
     HttpResponse::Ok()
