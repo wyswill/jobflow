@@ -9,7 +9,10 @@ use std::task::{Context, Poll};
 use std::{env, fs, path};
 use tokio::io::BufReader;
 use tokio::process::{Child, ChildStderr, ChildStdout, Command};
-use tokio::{io::AsyncBufReadExt, sync::mpsc};
+use tokio::{
+    io::AsyncBufReadExt,
+    sync::mpsc::{self, Sender},
+};
 use tokio_stream::Stream;
 use tokio_util::bytes::Bytes;
 #[derive(Debug, Serialize, Deserialize)]
@@ -98,6 +101,7 @@ impl Stream for LineStream {
 pub struct ShellUtil;
 
 impl ShellUtil {
+    /// 检查指令执行空间是否存在
     pub fn check_work_space(work_space: String, project_name: String, flow_name: String) -> String {
         let root_dir = path::Path::new(&work_space);
         let root_dir = root_dir.join(project_name).join(flow_name);
@@ -107,11 +111,13 @@ impl ShellUtil {
         root_dir.to_str().unwrap().to_string()
     }
 
+    /// 删除指令执行空间
     pub fn del_work_space(work_space: String) -> Result<(), std::io::Error> {
         let res: Result<(), std::io::Error> = fs::remove_dir_all(path::Path::new(&work_space));
         res
     }
 
+    /// 创建shell环境
     pub fn spawn_new_command(shell_str: String) -> Child {
         let output = Command::new("sh")
             .arg("-c")
@@ -119,15 +125,16 @@ impl ShellUtil {
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .spawn();
-        let child = match output {
+
+        match output {
             Ok(child) => child,
             Err(e) => {
                 panic!("{}", e);
             }
-        };
-        child
+        }
     }
 
+    /// 获取子线程的stdout & stderr 数据流
     pub fn get_std_reader(child: &mut Child) -> (BufReader<ChildStdout>, BufReader<ChildStderr>) {
         // 拿去标准输出和标准错误输出
         let stdout = match child.stdout.take() {
@@ -144,11 +151,8 @@ impl ShellUtil {
         let stderr_reader = BufReader::new(stderr);
         (stdout_reader, stderr_reader)
     }
-
-    pub async fn gen_line_stream(shell: String) -> LineStream {
-        // 注意: 复杂shell会导致队列堵塞
-        let (sender, receiver) = mpsc::channel(1000);
-
+    /// 执行shell并将stdout & stderr 输出到消息队列中
+    pub async fn exec_shell(shell: String, sender: Sender<Result<String, std::io::Error>>) {
         let mut child = ShellUtil::spawn_new_command(shell);
         let (stdout_reader, stderr_reader) = ShellUtil::get_std_reader(&mut child);
 
@@ -172,7 +176,5 @@ impl ShellUtil {
                 .unwrap(),
             Err(e) => println!("Failed to wait for child process: {}", e),
         }
-
-        LineStream { receiver }
     }
 }

@@ -2,13 +2,12 @@ use crate::{
     entity::{fow::Flow, project::Project, project_flow::ProjectFlow},
     request::{CreateFlowReq, FlowPageQuery, IdReq, UpdateFLowReq},
     response::ResponseBody,
-    shell_actor::{Despatch, ShellExecute},
-    util::{get_current_time_fmt, DataStore, ShellUtil},
+    util::{self, get_current_time_fmt, DataStore, ShellUtil},
 };
-use actix::Actor;
 use actix_web::{delete, get, post, web, HttpResponse, Responder};
 use rbatis::{rbdc::db::ExecResult, sql::Page, RBatis};
 use rbs::{to_value, Value};
+use tokio::sync::mpsc;
 enum HasFlowInDb<T> {
     Has(T),
     None(T),
@@ -250,17 +249,19 @@ async fn execute(_req: web::Query<IdReq>, app_data: web::Data<DataStore>) -> imp
 
     let project: Project = get_project_by_flow_id(&app_data.db, flow_data.id.unwrap()).await;
 
+    // 创建临时shell 执行空间
     let work_space =
         ShellUtil::check_work_space(app_data.work_space.clone(), project.name, flow_data.name);
     let mut shell_string = format!("cd {} \n", work_space);
     shell_string.push_str(&flow_data.shell_str);
 
-    // 创建输出流
-    let despatch = Despatch.start();
-    // TODO:测试一下延时命令  
-    let line_stream = despatch.send(ShellExecute { shell_string }).await.unwrap();
+    // 注意: 复杂shell会导致队列堵塞
+    let (sender, receiver) = mpsc::channel(10000);
+    let ls = util::LineStream { receiver };
+    // 执行命令并输出响应
+    tokio::spawn(ShellUtil::exec_shell(shell_string, sender));
 
     HttpResponse::Ok()
         .content_type("text/event-stream")
-        .streaming(line_stream)
+        .streaming(ls)
 }
